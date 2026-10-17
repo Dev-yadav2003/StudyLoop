@@ -102,6 +102,18 @@ def get_langfuse() -> Langfuse:
     return _client
 
 
+class GenerationsOnlyHandler(CallbackHandler):
+    """Records model calls only. LangChain's internal runnables (sequences, lambdas, parsers,
+    retry/fallback wrappers) would otherwise each become a CHAIN observation: one real Gemini
+    call produced 15 observations, cluttering traces and burning the Langfuse quota. With
+    chain events ignored, the generation's parent is unknown to the handler, so Langfuse nests
+    it under the current OpenTelemetry span — the stage span."""
+
+    @property
+    def ignore_chain(self) -> bool:
+        return True
+
+
 def langchain_callbacks() -> list[BaseCallbackHandler]:
     """Callbacks that trace LangChain runs as Langfuse generations under the current span.
 
@@ -110,7 +122,7 @@ def langchain_callbacks() -> list[BaseCallbackHandler]:
     """
     if _client is None:
         return []
-    return [CallbackHandler(public_key=_public_key)]
+    return [GenerationsOnlyHandler(public_key=_public_key)]
 
 
 def shutdown_tracing() -> None:

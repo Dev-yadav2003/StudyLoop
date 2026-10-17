@@ -173,17 +173,18 @@ async def test_generation_is_traced_under_stage_span(span_recorder: SpanRecorder
     assert gen.context is not None
     assert gen.context.trace_id == stage.context.trace_id
 
-    # Walk up from the generation: the stage span must be an ancestor.
-    by_id = {s.context.span_id: s for s in spans if s.context}
-    node, ancestors = gen, []
-    while node.parent is not None and node.parent.span_id in by_id:
-        node = by_id[node.parent.span_id]
-        ancestors.append(node.name)
-    assert "stage:qa" in ancestors
+    # One observation per LLM call: the generation hangs directly off the stage span, with
+    # no LangChain-internal CHAIN spans in between (15 of them per call before).
+    assert gen.parent is not None
+    assert gen.parent.span_id == stage.context.span_id
+    types = [(s.attributes or {}).get("langfuse.observation.type") for s in spans]
+    assert "chain" not in types
+    assert sorted(s.name for s in spans) == sorted(["stage:qa", gen.name])
+    assert gen.name == "gemini-2.5-flash:qa@v2"
 
-    attrs = {k: v for s in spans for k, v in (s.attributes or {}).items()}
-    assert any("prompt_version" in k for k in attrs)
-    assert any(str(v).find("dQw4w9WgXcQ") >= 0 for v in attrs.values())
+    gen_attrs = gen.attributes or {}
+    assert any("prompt_version" in k for k in gen_attrs)
+    assert any("dQw4w9WgXcQ" in str(v) for v in gen_attrs.values())
 
 
 def test_rate_limiter_shared_per_model_and_sized_from_registry() -> None:

@@ -201,9 +201,9 @@ class LLMGateway:
         primary = prompt.spec.model or model or self._default_model
         get_model(primary)
         opts = options or ModelOptions()
-        chain = self._branch(primary, prompt.spec.temperature, opts, schema)
+        chain = self._branch(primary, prompt, opts, schema)
         if self._fallback_model and self._fallback_model != primary:
-            fallback = self._branch(self._fallback_model, prompt.spec.temperature, opts, schema)
+            fallback = self._branch(self._fallback_model, prompt, opts, schema)
             chain = chain.with_fallbacks([fallback], exceptions_to_handle=TRANSIENT_ERRORS)
 
         config: RunnableConfig = {
@@ -247,10 +247,11 @@ class LLMGateway:
         )
 
     def _branch(
-        self, model: str, temperature: float, options: ModelOptions, schema: type[BaseModel]
+        self, model: str, prompt: RenderedPrompt, options: ModelOptions, schema: type[BaseModel]
     ) -> Runnable[Any, _Attempt]:
         """model → structured output (with raw message) → validate, retried as one unit."""
-        llm = self._factory(model, temperature, options)
+        llm = self._factory(model, prompt.spec.temperature, options)
+        llm.name = f"{model}:{prompt.ref}"  # the Langfuse generation's name; llm is per-call
         structured = llm.with_structured_output(schema, include_raw=True)
         unwrap = RunnableLambda(partial(_unwrap, model=model, schema=schema))
         return structured.pipe(unwrap).with_retry(
