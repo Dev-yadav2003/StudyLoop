@@ -7,7 +7,7 @@ Langfuse). Deploying to Render/Vercel comes later.
 
 ```bash
 uv sync                          # Python deps
-uv run alembic upgrade head      # Supabase schema → 0004
+uv run alembic upgrade head      # Supabase schema → latest (0006)
 cd apps/web && npm install       # frontend deps (Node ≥ 20.9)
 cp .env.example .env.local       # NEXT_PUBLIC_API_URL=http://127.0.0.1:8000
 ```
@@ -45,6 +45,12 @@ Check the API first:
    that moment in a new tab), **Copy Markdown**, **Download .md**.
 4. Submit the same video again (even as `youtu.be/...`): you go straight to the same job — no
    new work (idempotent).
+5. **Practice questions** (under the notes): pick a level and count, **Generate**. Each
+   answer is behind *Show answer*, with links to where it is taught. Generating again with the
+   same settings is instant (cached).
+6. **Edit notes**: fix a concept name or explanation, **Save** → the notes re-render at once
+   (no AI call; an *edited* tag marks the unit). Reload: the edit is still there. Timestamps
+   and sources can't be edited. An admin `rerun` replaces the notes, edits included.
 
 ## 4. Things worth trying
 

@@ -9,11 +9,13 @@ import remarkGfm from "remark-gfm";
 
 import { api, exportUrl, toApiError } from "@/lib/api";
 
+import { EditUnits } from "./edit-units";
 import { PracticeQuestions } from "./practice";
 
 export default function NotesPage() {
   const { id } = useParams<{ id: string }>();
   const [copied, setCopied] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   const notes = useQuery({
     queryKey: ["notes", id],
@@ -44,25 +46,34 @@ export default function NotesPage() {
         <a className="button secondary" href={exportUrl(notes.data.id)} download>
           Download .md
         </a>
+        {notes.data.units.length > 0 && (
+          <button type="button" className="button secondary" onClick={() => setEditing(!editing)}>
+            {editing ? "Done editing" : "Edit notes"}
+          </button>
+        )}
         <Link href="/" className="button secondary">
           New video
         </Link>
       </div>
-      <div className="card notes">
-        <ReactMarkdown
-          remarkPlugins={[remarkGfm]}
-          components={{
-            // Timestamp links go to YouTube: open them next to the notes.
-            a: ({ href, children }) => (
-              <a href={href} target="_blank" rel="noopener noreferrer">
-                {children}
-              </a>
-            ),
-          }}
-        >
-          {notes.data.markdown}
-        </ReactMarkdown>
-      </div>
+      {editing ? (
+        <EditUnits notes={notes.data} />
+      ) : (
+        <div className="card notes">
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={{
+              // Timestamp links go to YouTube: open them next to the notes.
+              a: ({ href, children }) => (
+                <a href={href} target="_blank" rel="noopener noreferrer">
+                  {children}
+                </a>
+              ),
+            }}
+          >
+            {notes.data.markdown}
+          </ReactMarkdown>
+        </div>
+      )}
       {notes.data.units.length > 0 && <PracticeQuestions notesId={notes.data.id} />}
     </article>
   );

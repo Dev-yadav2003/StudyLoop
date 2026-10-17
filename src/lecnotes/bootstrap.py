@@ -24,6 +24,7 @@ from lecnotes.jobs.queue import JobQueue
 from lecnotes.jobs.runner import JobRunner
 from lecnotes.llm.gateway import LLMGateway
 from lecnotes.observability.metrics import InMemoryStageRunSink, TeeStageRunSink
+from lecnotes.pipeline.notes_editor import NotesEditor
 from lecnotes.pipeline.orchestrator import AnyStage, Orchestrator
 from lecnotes.pipeline.qa_service import QaService
 from lecnotes.pipeline.registry import Pipeline
@@ -50,6 +51,7 @@ from lecnotes.storage.repositories.stage_runs import PostgresStageRunSink
 class Services:
     pipeline: Pipeline
     qa: QaService
+    editor: NotesEditor
     runs: InMemoryStageRunSink
     """In-memory copy of every StageRun of this process (CLI summary, debugging)."""
 
@@ -97,7 +99,8 @@ def assemble(
         orchestrator,
         QaStage(gateway, model=settings.text_model, prompt_version=settings.qa_prompt_version),
     )
-    return Services(pipeline=pipeline, qa=qa, runs=runs)
+    editor = NotesEditor(orchestrator, RenderStage())
+    return Services(pipeline=pipeline, qa=qa, editor=editor, runs=runs)
 
 
 @asynccontextmanager
@@ -139,9 +142,8 @@ class ApiContainer:
     engine: AsyncEngine
     queue: JobQueue
     notes: NotesRepository
-    pipeline: Pipeline
+    services: Services
     runner: JobRunner
-    qa: QaService
     runner_task: asyncio.Task[None] | None = None
 
 
@@ -158,9 +160,7 @@ async def api_container(settings: Settings) -> AsyncIterator[ApiContainer]:
         )
         notes = NotesRepository(engine)
         runner = JobRunner(queue, services.pipeline, notes, poll_s=settings.worker_poll_s)
-        container = ApiContainer(
-            settings, engine, queue, notes, services.pipeline, runner, services.qa
-        )
+        container = ApiContainer(settings, engine, queue, notes, services, runner)
         stop = asyncio.Event()
         if settings.run_worker:
             container.runner_task = asyncio.create_task(runner.run_forever(stop))

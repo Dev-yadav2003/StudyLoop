@@ -99,6 +99,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/notes/{notes_id}/units/{unit_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Edit Unit
+         * @description Correct one unit's content; the notes are re-rendered (no reprocessing, no AI call).
+         *     Where it was taught and what it cites can't be edited. Note: an admin rerun of the job
+         *     replaces the notes, edits included.
+         */
+        patch: operations["edit_unit_v1_notes__notes_id__units__unit_id__patch"];
+        trace?: never;
+    };
     "/v1/notes/{notes_id}/export": {
         parameters: {
             query?: never;
@@ -329,6 +351,16 @@ export interface components {
             markdown: string;
             /** Units */
             units: components["schemas"]["KnowledgeUnit"][];
+            /**
+             * Edited Units
+             * @description Ids of units a user has edited
+             */
+            edited_units: string[];
+            /**
+             * Revision
+             * @description Bumped on every edit
+             */
+            revision: number;
         };
         /** QaCreate */
         QaCreate: {
@@ -443,6 +475,26 @@ export interface components {
             label: string;
             /** Url */
             url: string;
+        };
+        /**
+         * UnitEdit
+         * @description A user's correction to one unit. Only the content is editable; where it was taught
+         *     (spans) and what it cites (evidence) stay as extracted. Omitted fields are unchanged;
+         *     `board_text`/`section` can be cleared with an empty string.
+         */
+        UnitEdit: {
+            /** Concept */
+            concept?: string | null;
+            /** Explanation */
+            explanation?: string | null;
+            /** Examples */
+            examples?: string[] | null;
+            /** Board Text */
+            board_text?: string | null;
+            /** Code */
+            code?: components["schemas"]["CodeBlock"][] | null;
+            /** Section */
+            section?: string | null;
         };
         /** UnitRef */
         UnitRef: {
@@ -662,6 +714,60 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    edit_unit_v1_notes__notes_id__units__unit_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                notes_id: string;
+                unit_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UnitEdit"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotesOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
                 };
             };
         };

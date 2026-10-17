@@ -17,7 +17,7 @@ from lecnotes.domain.job import (
     StageRunStatus,
     SubjectPreset,
 )
-from lecnotes.domain.knowledge import CodeBlock, Evidence, KnowledgeUnit, VideoSpan
+from lecnotes.domain.knowledge import CodeBlock, Evidence, KnowledgeUnit, UnitEdit, VideoSpan
 from lecnotes.domain.notes import NotesDocument
 from lecnotes.domain.perception import PerceptionResult, PerceptionRun
 from lecnotes.domain.qa import QaLevel, QaRequest, Question, QuestionLevel, QuestionSet
@@ -56,6 +56,7 @@ __all__ = [
     "SubjectPreset",
     "TranscriptSegment",
     "TranscriptSource",
+    "UnitEdit",
     "ValidatedEvidence",
     "ValidationIssue",
     "VerifySummary",

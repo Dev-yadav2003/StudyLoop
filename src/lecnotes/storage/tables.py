@@ -166,6 +166,8 @@ class NotesRow(Base):
     video: Mapped[dict[str, Any]]
     evidence: Mapped[dict[str, Any] | None]
     verify: Mapped[dict[str, Any] | None]
+    revision: Mapped[int] = mapped_column(server_default="0")
+    """Bumped on every edit; an edit based on an older revision is rejected (409)."""
     created_at: Mapped[datetime] = _created()
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
 
@@ -180,6 +182,8 @@ class UnitRow(Base):
     unit_key: Mapped[str]
     position: Mapped[int]
     data: Mapped[dict[str, Any]]
+    edited_at: Mapped[datetime | None]
+    """Set when a user edited this unit (step 9.2); None = as extracted."""
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
 
     __table_args__ = (UniqueConstraint("notes_id", "unit_key"),)

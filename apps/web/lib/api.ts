@@ -10,6 +10,8 @@ export const api = createClient<paths>({ baseUrl: API_URL });
 
 export type Job = components["schemas"]["JobOut"];
 export type Notes = components["schemas"]["NotesOut"];
+export type Unit = Notes["units"][number];
+export type UnitEdit = components["schemas"]["UnitEdit"];
 export type StageProgress = components["schemas"]["StageProgress"];
 export type SubjectPreset = components["schemas"]["JobCreate"]["subject_preset"];
 export type QaLevel = NonNullable<components["schemas"]["QaCreate"]["level"]>;
@@ -35,5 +37,4 @@ export function toApiError(error: unknown, status: number | null): ApiError {
   return new ApiError(detail ?? "Unexpected response from the server.", "error", status);
 }
 
-export const exportUrl = (notesId: string) =>
-  `${API_URL}/v1/notes/${notesId}/export?format=md`;
+export const exportUrl = (notesId: string) => `${API_URL}/v1/notes/${notesId}/export?format=md`;

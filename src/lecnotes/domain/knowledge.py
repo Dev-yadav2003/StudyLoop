@@ -76,3 +76,32 @@ class KnowledgeUnit(DomainModel):
     @property
     def video_ids(self) -> list[str]:
         return list(dict.fromkeys(span.video_id for span in self.spans))
+
+
+class UnitEdit(DomainModel):
+    """A user's correction to one unit. Only the content is editable; where it was taught
+    (spans) and what it cites (evidence) stay as extracted. Omitted fields are unchanged;
+    `board_text`/`section` can be cleared with an empty string."""
+
+    concept: NonEmptyStr | None = None
+    explanation: NonEmptyStr | None = None
+    examples: list[NonEmptyStr] | None = None
+    board_text: str | None = None
+    code: list[CodeBlock] | None = None
+    section: str | None = None
+
+    @model_validator(mode="after")
+    def _not_empty(self) -> Self:
+        if not self.model_fields_set:
+            raise ValueError("an edit must change at least one field")
+        required = {"concept", "explanation", "examples", "code"} & self.model_fields_set
+        if nulled := sorted(n for n in required if getattr(self, n) is None):
+            raise ValueError(f"cannot be null (send [] to empty a list): {', '.join(nulled)}")
+        return self
+
+    def apply(self, unit: KnowledgeUnit) -> KnowledgeUnit:
+        changes = {name: getattr(self, name) for name in self.model_fields_set}
+        for name in ("board_text", "section"):
+            if name in changes:
+                changes[name] = (changes[name] or "").strip() or None
+        return KnowledgeUnit.model_validate(unit.model_dump() | changes)

@@ -231,3 +231,44 @@ button:disabled {
 .level-application {
   color: var(--warn);
 }
+
+.edit-units {
+  display: grid;
+  gap: 16px;
+}
+
+.unit-form {
+  display: grid;
+  gap: 10px;
+}
+
+.unit-form label {
+  display: grid;
+  gap: 4px;
+}
+
+.unit-form-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.unit-form-head input {
+  flex: 1;
+  font-weight: 600;
+}
+
+textarea {
+  font: inherit;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  resize: vertical;
+}
+
+textarea.mono {
+  font-family: ui-monospace, "Cascadia Code", Menlo, monospace;
+  font-size: 0.9em;
+}

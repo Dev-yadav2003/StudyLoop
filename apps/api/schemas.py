@@ -69,6 +69,8 @@ class NotesOut(BaseModel):
     video: VideoMeta
     markdown: str
     units: list[KnowledgeUnit]
+    edited_units: list[str] = Field(description="Ids of units a user has edited")
+    revision: int = Field(description="Bumped on every edit")
 
 
 class StageRunOut(BaseModel):

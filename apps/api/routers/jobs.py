@@ -20,7 +20,7 @@ ERRORS: dict[int | str, dict[str, Any]] = {404: {"model": ErrorOut}, 422: {"mode
 async def job_out(c: ApiContainer, job: Job) -> JobOut:
     latest = latest_per_stage(await runs_for_job(c.engine, job.id))
     stages = []
-    for name in c.pipeline.stage_names:
+    for name in c.services.pipeline.stage_names:
         run = latest.get(name)
         state: StageState
         if run is None:

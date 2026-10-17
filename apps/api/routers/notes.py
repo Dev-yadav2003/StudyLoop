@@ -16,6 +16,8 @@ from apps.api.schemas import (
     TimestampLink,
     UnitRef,
 )
+from lecnotes.domain import UnitEdit
+from lecnotes.pipeline.notes_editor import UnitNotFound
 from lecnotes.storage.repositories.notes import StoredNotes
 from lecnotes.timefmt import format_timestamp
 
@@ -29,9 +31,7 @@ async def _load(c: Container, notes_id: UUID) -> StoredNotes:
     return stored
 
 
-@router.get("/{notes_id}", response_model=NotesOut, responses={404: {"model": ErrorOut}})
-async def get_notes(notes_id: UUID, c: Container) -> NotesOut:
-    stored = await _load(c, notes_id)
+def _out(stored: StoredNotes) -> NotesOut:
     doc = stored.document
     return NotesOut(
         id=stored.id,
@@ -40,7 +40,36 @@ async def get_notes(notes_id: UUID, c: Container) -> NotesOut:
         video=doc.video,
         markdown=doc.markdown,
         units=doc.units,
+        edited_units=sorted(stored.edited_units),
+        revision=stored.revision,
     )
+
+
+@router.get("/{notes_id}", response_model=NotesOut, responses={404: {"model": ErrorOut}})
+async def get_notes(notes_id: UUID, c: Container) -> NotesOut:
+    return _out(await _load(c, notes_id))
+
+
+@router.patch(
+    "/{notes_id}/units/{unit_id}",
+    response_model=NotesOut,
+    responses={404: {"model": ErrorOut}, 409: {"model": ErrorOut}, 422: {"model": ErrorOut}},
+)
+async def edit_unit(notes_id: UUID, unit_id: str, edit: UnitEdit, c: Container) -> NotesOut:
+    """Correct one unit's content; the notes are re-rendered (no reprocessing, no AI call).
+    Where it was taught and what it cites can't be edited. Note: an admin rerun of the job
+    replaces the notes, edits included."""
+    stored = await _load(c, notes_id)
+    try:
+        doc = await c.services.editor.edit(
+            job_id=stored.job_id, doc=stored.document, unit_id=unit_id, edit=edit
+        )
+    except UnitNotFound:
+        raise HTTPException(404, "Unit not found in these notes.") from None
+    saved = await c.notes.save_edit(stored, doc, unit_id)
+    if saved is None:
+        raise HTTPException(409, "These notes were changed meanwhile. Reload and try again.")
+    return _out(saved)
 
 
 @router.get(
@@ -72,7 +101,7 @@ async def practice_questions(notes_id: UUID, body: QaCreate, c: Container) -> Qu
     doc = stored.document
     if not doc.units:
         raise HTTPException(422, "These notes have no content to ask questions about.")
-    qset = await c.qa.generate(
+    qset = await c.services.qa.generate(
         job_id=stored.job_id, video=doc.video, units=doc.units, level=body.level, count=body.count
     )
     concepts = {u.id: u.concept for u in doc.units}

@@ -3,7 +3,7 @@ the edges (static catalog, recorded perception, scripted LLM)."""
 
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import httpx
 import pytest
@@ -36,9 +36,7 @@ async def api(engine: AsyncEngine, monkeypatch: pytest.MonkeyPatch) -> AsyncIter
     )
     queue, notes = JobQueue(engine), NotesRepository(engine)
     runner = JobRunner(queue, services.pipeline, notes, owner="test")
-    app = create_app(
-        ApiContainer(settings, engine, queue, notes, services.pipeline, runner, services.qa)
-    )
+    app = create_app(ApiContainer(settings, engine, queue, notes, services, runner))
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
         yield Api(client, runner)
@@ -97,6 +95,68 @@ async def test_practice_questions_are_grounded_and_cached(api: Api) -> None:
     assert bad.status_code == 422
     missing = await api.client.post(f"/v1/notes/{uuid4()}/qa", json={})
     assert missing.status_code == 404
+
+
+async def _finished_notes(api: Api) -> tuple[str, dict]:
+    job = (await api.client.post("/v1/jobs", json={"url": URL})).json()
+    await api.runner.run_once()
+    notes_id = (await api.client.get(f"/v1/jobs/{job['id']}")).json()["notes_id"]
+    return job["id"], (await api.client.get(f"/v1/notes/{notes_id}")).json()
+
+
+async def test_edit_unit_rerenders_and_persists(api: Api) -> None:
+    job_id, notes = await _finished_notes(api)
+    assert (notes["edited_units"], notes["revision"]) == ([], 0)
+    path = f"/v1/notes/{notes['id']}/units/{UNIT_ID}"
+
+    edited = await api.client.patch(
+        path, json={"concept": "enumerate(iterable)", "examples": ["enumerate('ab')"]}
+    )
+    assert edited.status_code == 200
+    body = edited.json()
+    assert (body["edited_units"], body["revision"]) == ([UNIT_ID], 1)
+    assert "### enumerate(iterable) ·" in body["markdown"]
+    assert "- enumerate('ab')" in body["markdown"]
+    unit = body["units"][0]
+    assert unit["spans"] == notes["units"][0]["spans"]  # provenance untouched
+    assert unit["evidence"] == notes["units"][0]["evidence"]
+
+    reloaded = (await api.client.get(f"/v1/notes/{notes['id']}")).json()
+    assert reloaded == body
+    export = await api.client.get(f"/v1/notes/{notes['id']}/export")
+    assert export.text == body["markdown"]
+
+    # render only: one more render run, nothing upstream re-ran, no model call
+    history = (await api.client.get(f"/v1/admin/jobs/{job_id}/stages", headers=ADMIN)).json()
+    counts = {s: sum(r["stage"] == s for r in history) for s in ("extract", "render")}
+    assert counts == {"extract": 1, "render": 2}
+    assert history[-1]["stage"] == "render"
+    assert history[-1]["tokens_in"] == 0
+
+
+async def test_edit_unit_errors(api: Api) -> None:
+    _, notes = await _finished_notes(api)
+    base = f"/v1/notes/{notes['id']}/units"
+    assert (await api.client.patch(f"{base}/nope", json={"concept": "x"})).status_code == 404
+    missing = await api.client.patch(f"/v1/notes/{uuid4()}/units/{UNIT_ID}", json={"concept": "x"})
+    assert missing.status_code == 404
+    for bad in ({}, {"concept": ""}, {"spans": []}):
+        assert (await api.client.patch(f"{base}/{UNIT_ID}", json=bad)).status_code == 422
+
+
+async def test_concurrent_edit_is_rejected_not_lost(api: Api, engine: AsyncEngine) -> None:
+    _, notes = await _finished_notes(api)
+    repo = NotesRepository(engine)
+    stale = await repo.get(UUID(notes["id"]))
+    assert stale is not None
+    ok = await api.client.patch(
+        f"/v1/notes/{notes['id']}/units/{UNIT_ID}", json={"explanation": "First edit."}
+    )
+    assert ok.status_code == 200
+    assert await repo.save_edit(stale, stale.document, UNIT_ID) is None  # based on revision 0
+    current = await repo.get(UUID(notes["id"]))
+    assert current is not None
+    assert current.document.units[0].explanation == "First edit."
 
 
 async def test_same_video_returns_the_existing_job(api: Api) -> None:
@@ -177,9 +237,7 @@ async def test_admin_disabled_without_token(
     services, _ = fake_services(settings, PostgresStageCache(engine))
     queue, notes = JobQueue(engine), NotesRepository(engine)
     runner = JobRunner(queue, services.pipeline, notes)
-    app = create_app(
-        ApiContainer(settings, engine, queue, notes, services.pipeline, runner, services.qa)
-    )
+    app = create_app(ApiContainer(settings, engine, queue, notes, services, runner))
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=app), base_url="http://test"
     ) as client:
