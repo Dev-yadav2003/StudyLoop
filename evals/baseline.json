@@ -1,0 +1,220 @@
+{
+  "run_id": "20261017-162753-baseline-extract-v2-verify-v1",
+  "label": "baseline: extract v2 + verify v1",
+  "created_at": "2026-10-17T16:27:53.351933Z",
+  "git_sha": "c29d41d",
+  "config": {
+    "stages": {
+      "resolve": {
+        "version": 1,
+        "prompt_version": null,
+        "model": null
+      },
+      "perceive": {
+        "version": 1,
+        "prompt_version": 1,
+        "model": "gemini-2.5-flash"
+      },
+      "validate": {
+        "version": 1,
+        "prompt_version": null,
+        "model": null
+      },
+      "align": {
+        "version": 2,
+        "prompt_version": null,
+        "model": null
+      },
+      "chunk": {
+        "version": 1,
+        "prompt_version": null,
+        "model": null
+      },
+      "extract": {
+        "version": 2,
+        "prompt_version": 1,
+        "model": "gemini-2.5-flash"
+      },
+      "verify": {
+        "version": 1,
+        "prompt_version": 1,
+        "model": "gemini-2.5-flash"
+      },
+      "render": {
+        "version": 2,
+        "prompt_version": null,
+        "model": null
+      }
+    },
+    "judge_model": "gemini-3-flash-preview",
+    "judge_thinking": "low",
+    "features": {
+      "merge": true,
+      "verify": true,
+      "qa": false
+    },
+    "chunk_s": [
+      120,
+      300
+    ]
+  },
+  "videos": [
+    {
+      "video_id": "Ek49cGiAOwo",
+      "title": "Ek49cGiAOwo",
+      "lecture_type": null,
+      "job_id": "924a45b5-79e2-46b7-9f4e-2f9938749fda",
+      "units": 7,
+      "metrics": {
+        "faithfulness": 1.0,
+        "verify_dropped_rate": 0.0
+      },
+      "stage_runs": [
+        {
+          "job_id": "924a45b5-79e2-46b7-9f4e-2f9938749fda",
+          "video_id": null,
+          "stage": "resolve",
+          "stage_version": 1,
+          "prompt_version": null,
+          "model": null,
+          "status": "ok",
+          "cache_hit": false,
+          "latency_ms": 0.15490000077988952,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": "0",
+          "error_type": null,
+          "trace_id": null,
+          "cache_key": "64f82a8901f1b4193a129fa9cd125c4399fe80e40caa7af42e0c06492fed6174",
+          "started_at": "2026-10-17T16:27:53.390121Z"
+        },
+        {
+          "job_id": "924a45b5-79e2-46b7-9f4e-2f9938749fda",
+          "video_id": "Ek49cGiAOwo",
+          "stage": "perceive",
+          "stage_version": 1,
+          "prompt_version": 1,
+          "model": "gemini-2.5-flash",
+          "status": "ok",
+          "cache_hit": true,
+          "latency_ms": 106.21920000266982,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": "0",
+          "error_type": null,
+          "trace_id": null,
+          "cache_key": "52fc26ffd393962eb1bb55156e6b84763d01c8f7ad050c583f3ba6f871f97b78",
+          "started_at": "2026-10-17T16:27:53.967387Z"
+        },
+        {
+          "job_id": "924a45b5-79e2-46b7-9f4e-2f9938749fda",
+          "video_id": "Ek49cGiAOwo",
+          "stage": "validate",
+          "stage_version": 1,
+          "prompt_version": null,
+          "model": null,
+          "status": "ok",
+          "cache_hit": true,
+          "latency_ms": 103.46900000149617,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": "0",
+          "error_type": null,
+          "trace_id": null,
+          "cache_key": "c060b4c64a6f2064be215ec0671bc45a4aa8cab1373d1f9028c50a038f7dc22e",
+          "started_at": "2026-10-17T16:27:54.172299Z"
+        },
+        {
+          "job_id": "924a45b5-79e2-46b7-9f4e-2f9938749fda",
+          "video_id": "Ek49cGiAOwo",
+          "stage": "align",
+          "stage_version": 2,
+          "prompt_version": null,
+          "model": null,
+          "status": "ok",
+          "cache_hit": true,
+          "latency_ms": 127.59940000250936,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": "0",
+          "error_type": null,
+          "trace_id": null,
+          "cache_key": "4ddda23f6ed5fc1867cac7fb928f2043e449c3c2210d5cd5e41bf4883def6780",
+          "started_at": "2026-10-17T16:27:54.378916Z"
+        },
+        {
+          "job_id": "924a45b5-79e2-46b7-9f4e-2f9938749fda",
+          "video_id": "Ek49cGiAOwo",
+          "stage": "chunk",
+          "stage_version": 1,
+          "prompt_version": null,
+          "model": null,
+          "status": "ok",
+          "cache_hit": true,
+          "latency_ms": 110.74640000151703,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": "0",
+          "error_type": null,
+          "trace_id": null,
+          "cache_key": "e461d8e2e102dca5c64ca5c32d83a5eae9c47d3432b45a7794221f50d33d865c",
+          "started_at": "2026-10-17T16:27:54.611169Z"
+        },
+        {
+          "job_id": "924a45b5-79e2-46b7-9f4e-2f9938749fda",
+          "video_id": "Ek49cGiAOwo",
+          "stage": "extract",
+          "stage_version": 2,
+          "prompt_version": 1,
+          "model": "gemini-2.5-flash",
+          "status": "ok",
+          "cache_hit": true,
+          "latency_ms": 107.46719999588095,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": "0",
+          "error_type": null,
+          "trace_id": null,
+          "cache_key": "197ed8962fe67b05f106421b3728ca007ff91829696a9d69d7c80f58344b4963",
+          "started_at": "2026-10-17T16:27:54.825599Z"
+        },
+        {
+          "job_id": "924a45b5-79e2-46b7-9f4e-2f9938749fda",
+          "video_id": "Ek49cGiAOwo",
+          "stage": "verify",
+          "stage_version": 1,
+          "prompt_version": 1,
+          "model": "gemini-2.5-flash",
+          "status": "ok",
+          "cache_hit": true,
+          "latency_ms": 101.4560999974492,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": "0",
+          "error_type": null,
+          "trace_id": null,
+          "cache_key": "73b03e78347ce28fce2bdbf56a7dc474ff46f054cc0209c5166bf4a46975d4ed",
+          "started_at": "2026-10-17T16:27:55.041793Z"
+        },
+        {
+          "job_id": "924a45b5-79e2-46b7-9f4e-2f9938749fda",
+          "video_id": "Ek49cGiAOwo",
+          "stage": "render",
+          "stage_version": 2,
+          "prompt_version": null,
+          "model": null,
+          "status": "ok",
+          "cache_hit": true,
+          "latency_ms": 106.40810000040801,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": "0",
+          "error_type": null,
+          "trace_id": null,
+          "cache_key": "aa7bd985de3b8a63f74b207de47430e7e1ea299d18bf3fb384113196b294aed0",
+          "started_at": "2026-10-17T16:27:55.243988Z"
+        }
+      ]
+    }
+  ]
+}
