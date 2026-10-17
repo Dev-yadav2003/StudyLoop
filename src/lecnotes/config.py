@@ -36,7 +36,6 @@ class FeatureFlags(BaseModel):
 
     merge: bool = True
     verify: bool = True
-    qa: bool = False
 
 
 class Settings(BaseSettings):

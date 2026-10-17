@@ -3,15 +3,14 @@
     key = sha256(video_id, stage, stage_version, prompt_version, model, input_hash, config_hash)
 
 Invalidation is by construction: bump a stage or prompt version, change the model, the
-input, or a setting the stage *declares* relevant → new key → miss. Settings a stage does
-not depend on are never hashed (use `config_subset`), so changing them keeps the hit.
+input, or a setting the stage *declares* relevant (`Stage.config`) → new key → miss.
+Settings a stage does not depend on are never hashed, so changing them keeps the hit.
 """
 
 from __future__ import annotations
 
 import hashlib
 import json
-from collections.abc import Iterable
 from dataclasses import asdict, dataclass
 from typing import Any
 
@@ -39,11 +38,6 @@ def canonical_json(value: Any) -> bytes:
 
 def content_hash(value: Any) -> str:
     return hashlib.sha256(canonical_json(value)).hexdigest()
-
-
-def config_subset(config: BaseModel, fields: Iterable[str]) -> dict[str, Any]:
-    """The settings a stage depends on — and nothing else."""
-    return {name: getattr(config, name) for name in sorted(fields)}
 
 
 @dataclass(frozen=True)

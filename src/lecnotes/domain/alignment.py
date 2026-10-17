@@ -18,7 +18,6 @@ from lecnotes.domain.visual import BoardState
 class AlignmentMethod(StrEnum):
     TEMPORAL = "temporal"
     LEXICAL = "lexical"
-    LLM = "llm"
 
 
 class AlignmentLink(DomainModel):

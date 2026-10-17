@@ -18,10 +18,6 @@ from typing import IO, Any
 import structlog
 from structlog.typing import Processor
 
-# Fields every pipeline log line should carry (plan §4.7). Not enforced, but documented here
-# so call sites use consistent names.
-CONTEXT_FIELDS = ("job_id", "video_id", "stage", "stage_version", "trace_id")
-
 _SHARED_PROCESSORS: list[Processor] = [
     structlog.contextvars.merge_contextvars,
     structlog.stdlib.add_logger_name,

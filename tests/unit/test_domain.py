@@ -17,8 +17,6 @@ from lecnotes.domain import (
     KnowledgeUnit,
     NotesDocument,
     PerceptionResult,
-    Question,
-    QuestionLevel,
     StageRun,
     StageRunStatus,
     TranscriptSegment,
@@ -64,7 +62,7 @@ def test_valid_objects_build() -> None:
     assert u.video_ids == [VID]
     assert VideoRef(video_id=VID).url.endswith(VID)
     meta = VideoMeta(video_id=VID, title="Lecture 1", duration_s=600)
-    assert meta.timestamp_url(65.9) == f"https://youtu.be/{VID}?t=65"
+    assert meta.url == f"https://www.youtube.com/watch?v={VID}"
 
 
 def test_board_state_single_frame_allowed() -> None:
@@ -199,14 +197,6 @@ def _round_trip_cases() -> list[BaseModel]:
         ),
         unit(),
         NotesDocument(title="Notes", video=meta, units=[unit()], markdown="# Notes"),
-        Question(
-            id="q1",
-            level=QuestionLevel.RECALL,
-            question="What does enumerate yield?",
-            answer="(index, item) pairs",
-            unit_ids=["u1"],
-            spans=[VideoSpan(video_id=VID, start_s=10, end_s=40)],
-        ),
         Job(id=uuid4(), url="https://youtu.be/x", created_at=NOW, updated_at=NOW),
         StageRun(
             job_id=uuid4(),

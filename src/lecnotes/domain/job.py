@@ -26,7 +26,6 @@ class JobOptions(DomainModel):
     """Everything that changes the output. Part of job idempotency (same url + options)."""
 
     subject_preset: SubjectPreset = SubjectPreset.GENERAL
-    generate_questions: bool = False
 
 
 class Job(DomainModel):

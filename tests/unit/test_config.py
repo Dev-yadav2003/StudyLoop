@@ -14,7 +14,7 @@ REQUIRED = {
 @pytest.fixture(autouse=True)
 def isolated_env(monkeypatch: pytest.MonkeyPatch) -> None:
     """Strip any real env vars and ignore .env so tests are hermetic."""
-    for name in [*REQUIRED, "ENV", "PERCEIVE_FPS", "CHUNK_MIN_S", "CHUNK_MAX_S", "FEATURES__QA"]:
+    for name in [*REQUIRED, "ENV", "PERCEIVE_FPS", "CHUNK_MIN_S", "CHUNK_MAX_S", "FEATURES__MERGE"]:
         monkeypatch.delenv(name, raising=False)
     monkeypatch.setitem(Settings.model_config, "env_file", None)
 
@@ -34,7 +34,7 @@ def test_defaults_load() -> None:
     assert s.chunk_min_s == 120
     assert s.chunk_max_s == 300
     assert s.features.verify is True
-    assert s.features.qa is False
+    assert s.features.merge is True
     assert s.gemini_api_key.get_secret_value() == "g-key"
 
 
@@ -56,10 +56,10 @@ def test_blank_secret_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
 @pytest.mark.usefixtures("required_env")
 def test_env_overrides_and_nested_flags(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("PERCEIVE_FPS", "2")
-    monkeypatch.setenv("FEATURES__QA", "true")
+    monkeypatch.setenv("FEATURES__MERGE", "false")
     s = load_settings()
     assert s.perceive_fps == 2.0
-    assert s.features.qa is True
+    assert s.features.merge is False
 
 
 @pytest.mark.usefixtures("required_env")

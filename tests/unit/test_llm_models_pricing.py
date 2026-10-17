@@ -38,5 +38,5 @@ def test_every_registered_model_has_a_price() -> None:
 
 def test_registry_lookup() -> None:
     m = get_model("gemini-2.5-flash")
-    assert m.video_input
+    assert m.name == "gemini-2.5-flash"
     assert m.requests_per_minute > 0

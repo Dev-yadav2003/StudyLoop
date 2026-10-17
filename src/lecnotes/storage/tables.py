@@ -23,7 +23,6 @@ from sqlalchemy import (
     Index,
     MetaData,
     Numeric,
-    SmallInteger,
     Text,
     UniqueConstraint,
     func,
@@ -102,16 +101,6 @@ class JobRow(Base):
     )
 
 
-class VideoRow(Base):
-    __tablename__ = "videos"
-
-    video_id: Mapped[str] = mapped_column(primary_key=True)
-    title: Mapped[str]
-    duration_s: Mapped[float]
-    channel: Mapped[str | None]
-    fetched_at: Mapped[datetime] = _created()
-
-
 class StageCacheRow(Base):
     """Whole stage outputs keyed by a content hash (see cache/keys.py)."""
 
@@ -182,7 +171,7 @@ class NotesRow(Base):
 
 
 class UnitRow(Base):
-    """A KnowledgeUnit of a notes document; editable (step 9.2) without reprocessing."""
+    """A KnowledgeUnit of a notes document, in order."""
 
     __tablename__ = "units"
 
@@ -191,23 +180,6 @@ class UnitRow(Base):
     unit_key: Mapped[str]
     position: Mapped[int]
     data: Mapped[dict[str, Any]]
-    edited: Mapped[bool] = mapped_column(server_default="false")
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
 
     __table_args__ = (UniqueConstraint("notes_id", "unit_key"),)
-
-
-class FeedbackRow(Base):
-    __tablename__ = "feedback"
-
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
-    notes_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("notes.id", ondelete="CASCADE"))
-    unit_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("units.id", ondelete="SET NULL"))
-    rating: Mapped[int] = mapped_column(SmallInteger)
-    reason: Mapped[str | None]
-    created_at: Mapped[datetime] = _created()
-
-    __table_args__ = (
-        CheckConstraint("rating IN (-1, 1)", name="rating"),
-        Index(None, "notes_id"),  # Postgres does not index FKs; needed for cascade deletes
-    )

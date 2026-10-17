@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from pathlib import Path
 
 from lecnotes.domain import PerceptionResult, PerceptionRun, VideoRef
 from lecnotes.errors import PerceptionError
@@ -24,15 +23,6 @@ class FakePerceiver:
         self._prompt_version = prompt_version
         self._model = model
         self.calls: list[str] = []
-
-    @classmethod
-    def from_fixtures(cls, paths: list[Path], **kwargs: object) -> FakePerceiver:
-        """Load `perception_<id>.json` files saved by scripts/try_perceive.py."""
-        results = {}
-        for path in paths:
-            result = PerceptionResult.model_validate_json(path.read_text(encoding="utf-8"))
-            results[result.video_id] = result
-        return cls(results, **kwargs)  # type: ignore[arg-type]
 
     @property
     def fingerprint(self) -> dict[str, str | int | float]:

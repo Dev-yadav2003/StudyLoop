@@ -75,6 +75,3 @@ class VideoMeta(DomainModel):
     @property
     def url(self) -> str:
         return self.ref.url
-
-    def timestamp_url(self, t_s: float) -> str:
-        return f"https://youtu.be/{self.video_id}?t={int(t_s)}"

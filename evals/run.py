@@ -15,6 +15,7 @@ every StageRun) goes to evals/reports/runs/ — feed two of them to `evals.compa
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import subprocess
 from collections.abc import Sequence
@@ -32,14 +33,13 @@ from evals.metrics.faithfulness import faithfulness
 from evals.metrics.keypoint_recall import keypoint_recall
 from evals.metrics.redundancy import redundancy
 from evals.metrics.wer_terms import term_error_rate, wer
-from evals.notes_report import PRESET, video_meta
 from lecnotes.adapters.cache.memory import InMemoryStageCache
 from lecnotes.adapters.cache.postgres_cache import PostgresStageCache
 from lecnotes.adapters.catalog.static import StaticCatalog
 from lecnotes.adapters.perception.fake import FakePerceiver
 from lecnotes.bootstrap import assemble
 from lecnotes.config import Settings, get_settings
-from lecnotes.domain import JobOptions, PerceptionResult, StageRun, SubjectPreset
+from lecnotes.domain import JobOptions, PerceptionResult, StageRun, SubjectPreset, VideoMeta
 from lecnotes.llm.gateway import LLMGateway, ModelOptions
 from lecnotes.observability.logging import configure_logging
 from lecnotes.ports.cache import StageCache
@@ -51,6 +51,7 @@ from lecnotes.storage.repositories.stage_runs import PostgresStageRunSink
 REPO = Path(__file__).parents[1]
 FIXTURES = REPO / "tests" / "fixtures"
 RUNS_DIR = REPO / "evals" / "reports" / "runs"
+PRESET = {"code": SubjectPreset.STEM, "slides": SubjectPreset.GENERAL}
 
 # Gemini 3's default (high) thinking took >180 s → 504 on a 7-unit claim audit; "low" took
 # 7 s with the same verdicts. Judged scores are only comparable at the same settings, so
@@ -87,6 +88,18 @@ class RunRecord(BaseModel):
     git_sha: str | None = None
     config: dict[str, Any]
     videos: list[VideoResult] = Field(default_factory=list)
+
+
+def video_meta(video: GoldenVideo, perception: PerceptionResult, meta_path: Path) -> VideoMeta:
+    """Duration from the fixture's .meta.json, else the last evidence timestamp."""
+    duration = None
+    if meta_path.is_file():
+        duration = json.loads(meta_path.read_text(encoding="utf-8")).get("duration_s")
+    if not duration:
+        ends = [s.end_s for s in perception.segments]
+        ends += [b.t_last_seen for b in perception.board_states]
+        duration = max(ends, default=0) + 1
+    return VideoMeta(video_id=video.id, title=video.title, duration_s=duration)
 
 
 def fixture_ids(fixtures: Path) -> list[str]:

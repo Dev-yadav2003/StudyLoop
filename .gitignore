@@ -25,8 +25,7 @@ htmlcov/
 Thumbs.db
 
 # Eval outputs
-evals/reports/*
-!evals/reports/.gitkeep
+evals/reports/
 
 # Frontend
 node_modules/

@@ -1,11 +1,16 @@
 import pytest
-from pydantic import BaseModel, SecretStr
+from pydantic import SecretStr
 
-from lecnotes.cache.keys import StageKey, canonical_json, config_subset, content_hash
+from lecnotes.cache.keys import StageKey, canonical_json, content_hash
 from lecnotes.config import Settings
 from lecnotes.domain import TranscriptSegment
 
 PERCEIVE_CONFIG = ["perceive_fps", "perceive_media_resolution", "perceive_model"]
+
+
+def perceive_config(s: Settings) -> dict[str, object]:
+    """What a perceive stage declares in Stage.config: only the settings it depends on."""
+    return {name: getattr(s, name) for name in PERCEIVE_CONFIG}
 
 
 @pytest.fixture
@@ -29,7 +34,7 @@ def key(settings: Settings, **overrides: object) -> StageKey:
         "prompt_version": 1,
         "model": "gemini-2.5-flash",
         "input": {"video_id": "dQw4w9WgXcQ"},
-        "config": config_subset(settings, PERCEIVE_CONFIG),
+        "config": perceive_config(settings),
     }
     return StageKey.build(**(fields | overrides))  # type: ignore[arg-type]
 
@@ -56,7 +61,7 @@ def test_unrelated_config_change_hits(settings: Settings) -> None:
     relevant = settings.model_copy(update={"perceive_fps": 2.0})
 
     def with_config(s: Settings) -> str:
-        return key(s, config=config_subset(s, PERCEIVE_CONFIG)).digest
+        return key(s, config=perceive_config(s)).digest
 
     assert with_config(unrelated) == key(settings).digest
     assert with_config(relevant) != key(settings).digest
@@ -88,12 +93,3 @@ def test_digest_is_sha256_hex(settings: Settings) -> None:
     digest = key(settings).digest
     assert len(digest) == 64
     int(digest, 16)
-
-
-def test_config_subset_is_sorted_and_limited() -> None:
-    class Cfg(BaseModel):
-        b: int = 2
-        a: int = 1
-        c: int = 3
-
-    assert list(config_subset(Cfg(), ["b", "a"])) == ["a", "b"]

@@ -14,47 +14,28 @@ sampling defaults"), which breaks reproducibility, so it isn't registered either
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal
 
 from lecnotes.errors import UnknownModel
-
-Provider = Literal["google"]
 
 
 @dataclass(frozen=True)
 class ModelInfo:
     name: str
-    provider: Provider
-    requests_per_minute: int
-    requests_per_day: int
-    context_tokens: int
-    video_input: bool
+    requests_per_minute: float
 
 
 _MODELS = [
     ModelInfo(
         name="gemini-2.5-flash",
-        provider="google",
         requests_per_minute=10,
-        requests_per_day=250,
-        context_tokens=1_048_576,
-        video_input=True,
     ),
     ModelInfo(  # fallback when the primary is out of quota
         name="gemini-3.1-flash-lite",
-        provider="google",
         requests_per_minute=10,  # unverified, conservative
-        requests_per_day=100,  # unverified, conservative
-        context_tokens=1_048_576,
-        video_input=True,
     ),
     ModelInfo(  # newer generation than 2.5 Flash: used as an independent eval judge
         name="gemini-3-flash-preview",
-        provider="google",
-        requests_per_minute=5,  # unverified, conservative
-        requests_per_day=20,  # unverified, conservative
-        context_tokens=1_048_576,
-        video_input=True,
+        requests_per_minute=5,  # unverified, conservative (AI Studio shows the real value)
     ),
 ]
 
