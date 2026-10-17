@@ -283,3 +283,20 @@ async def test_thinking_level_reaches_the_request(monkeypatch: pytest.MonkeyPatc
     body = json.loads(route.calls.last.request.content)
     thinking = body["generationConfig"]["thinkingConfig"]
     assert str(thinking.get("thinkingLevel", thinking.get("thinking_level"))).lower() == "low"
+
+
+async def test_transport_timeout_is_retried() -> None:
+    """Seen for real: Gemini stalled > 180 s once; the SDK raised a raw httpx.ReadTimeout,
+    which the retry/fallback logic didn't recognise, so the whole job failed."""
+    fake = FakeLLM({"qa": [httpx.ReadTimeout("stalled"), ANSWER]})
+    result = await make_gateway(fake).generate_structured(make_prompt(), Answer)
+    assert result.output == ANSWER
+    assert len(fake.calls) == 2
+
+
+async def test_persistent_transport_errors_fall_back_then_fail_retryable() -> None:
+    fake = FakeLLM({"qa": httpx.ConnectError("unreachable")})
+    with pytest.raises(LLMError) as exc_info:
+        await make_gateway(fake).generate_structured(make_prompt(), Answer)
+    assert exc_info.value.retryable is True
+    assert [c.model for c in fake.calls] == [FLASH] * 3 + [LITE] * 3

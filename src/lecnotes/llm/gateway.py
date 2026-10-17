@@ -20,6 +20,7 @@ from dataclasses import dataclass
 from functools import partial
 from typing import Any, Literal, cast
 
+import httpx
 from google.genai.types import MediaResolution
 from langchain_core.callbacks import (
     AsyncCallbackManagerForLLMRun,
@@ -74,12 +75,15 @@ _MEDIA_RESOLUTION = {
 }
 
 # Errors where another attempt (same model after backoff, or the fallback model) may succeed.
+# httpx.TransportError: the SDK sometimes surfaces raw timeouts / connection errors that
+# LangChain doesn't classify (seen: a 180 s ReadTimeout when Gemini stalled once).
 TRANSIENT_ERRORS: tuple[type[Exception], ...] = (
     ModelRateLimitError,
     ModelAPIError,
     ModelConnectionError,
     ModelTimeoutError,
     StructuredOutputError,
+    httpx.TransportError,
 )
 
 
@@ -228,6 +232,8 @@ class LLMGateway:
             raise LLMError(f"{prompt.ref}: input exceeds context window: {exc}") from exc
         except ModelError as exc:
             raise LLMError(f"{prompt.ref}: {exc}", retryable=exc.is_retryable) from exc
+        except httpx.TransportError as exc:
+            raise LLMError(f"{prompt.ref}: {type(exc).__name__}: {exc}", retryable=True) from exc
         latency_ms = (time.perf_counter() - started) * 1000
 
         usage = attempt.raw.usage_metadata or {}

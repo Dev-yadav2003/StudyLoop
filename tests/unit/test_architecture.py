@@ -39,7 +39,7 @@ RULES: dict[str, tuple[set[str], set[str] | None]] = {
             "lecnotes.observability",
             "lecnotes.prompts",
         },
-        {"pydantic", "langchain_core", "langchain_google_genai", "google"},
+        {"pydantic", "langchain_core", "langchain_google_genai", "google", "httpx"},
     ),
 }
 
