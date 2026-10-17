@@ -8,7 +8,15 @@ See [`plan.md`](plan.md) for the architecture and build plan, and
 
 ## Setup
 
-Requires [uv](https://docs.astral.sh/uv/).
+With plain pip (Python 3.12):
+
+```bash
+python -m venv .venv
+.venv\Scriptsctivate            # Windows  (macOS/Linux: source .venv/bin/activate)
+pip install -r requirements-dev.txt   # app + tests/lint/evals (runtime only: requirements.txt)
+```
+
+Or with [uv](https://docs.astral.sh/uv/) — same pinned versions, faster:
 
 ```bash
 uv sync                      # core + dev + eval dependencies
@@ -46,6 +54,18 @@ uv run python -m evals.compare --latest     # before/after: metrics, stages, lat
 
 PRs labelled `eval` run the eval suite in CI and fail if faithfulness or keypoint recall
 drops by more than 5 points versus `evals/baseline.json`.
+
+## Dependencies
+
+`pyproject.toml` declares them, `uv.lock` pins every version, and `requirements*.txt` are
+generated from the lock (never edit them by hand):
+
+```bash
+uv add <package>                                  # or edit pyproject.toml, then: uv lock
+uv run python scripts/export_requirements.py      # regenerate requirements*.txt
+```
+
+CI fails if `requirements*.txt` don't match `uv.lock`.
 
 ## Develop
 

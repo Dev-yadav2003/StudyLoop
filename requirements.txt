@@ -1,0 +1,257 @@
+# Generated from uv.lock by scripts/export_requirements.py — do not edit by hand.
+# To change dependencies: edit pyproject.toml, run `uv lock`, then re-run the script.
+-e .
+alembic==1.20.0
+    # via lecnotes
+annotated-doc==0.0.5
+    # via fastapi
+annotated-types==0.8.0
+    # via pydantic
+anyio==4.15.1
+    # via
+    #   google-genai
+    #   httpx
+    #   httpx2
+    #   langsmith
+    #   starlette
+    #   watchfiles
+backoff==2.2.1
+    # via langfuse
+certifi==2026.7.22
+    # via
+    #   httpcore
+    #   httpx
+    #   requests
+cffi==2.1.1 ; platform_python_implementation != 'PyPy'
+    # via cryptography
+charset-normalizer==3.5.2
+    # via requests
+click==8.5.0
+    # via uvicorn
+cryptography==50.0.2
+    # via google-auth
+distro==1.9.0
+    # via
+    #   google-genai
+    #   langsmith
+fastapi==0.143.3
+    # via lecnotes
+filetype==1.2.0
+    # via langchain-google-genai
+google-auth==2.62.0
+    # via google-genai
+google-genai==2.31.0
+    # via
+    #   langchain-google-genai
+    #   lecnotes
+googleapis-common-protos==1.75.5
+    # via opentelemetry-exporter-otlp-proto-http
+greenlet==3.5.6
+    # via sqlalchemy
+h11==0.16.0
+    # via
+    #   httpcore
+    #   httpcore2
+    #   uvicorn
+httpcore==1.0.9
+    # via httpx
+httpcore2==2.13.1 ; sys_platform != 'emscripten'
+    # via httpx2
+httptools==0.9.0
+    # via uvicorn
+httpx==0.28.1
+    # via
+    #   google-genai
+    #   langchain-core
+    #   langfuse
+    #   lecnotes
+httpx2==2.13.1
+    # via langsmith
+httpx2-jsfetch==1.0 ; sys_platform == 'emscripten'
+    # via httpx2
+idna==3.20
+    # via
+    #   anyio
+    #   httpx
+    #   httpx2
+    #   requests
+jinja2==3.1.6
+    # via lecnotes
+jsonpatch==1.35
+    # via langchain-core
+jsonpointer==3.2.1
+    # via jsonpatch
+langchain-core==1.6.12
+    # via
+    #   langchain-google-genai
+    #   lecnotes
+langchain-google-genai==4.4.2
+    # via lecnotes
+langchain-protocol==0.0.19
+    # via langchain-core
+langfuse==5.0.2
+    # via lecnotes
+langsmith==0.14.11
+    # via langchain-core
+mako==1.4.3
+    # via alembic
+markupsafe==3.0.4
+    # via
+    #   jinja2
+    #   mako
+opentelemetry-api==1.45.1
+    # via
+    #   fastapi
+    #   langfuse
+    #   opentelemetry-exporter-http-transport
+    #   opentelemetry-exporter-otlp-proto-http
+    #   opentelemetry-sdk
+    #   opentelemetry-semantic-conventions
+opentelemetry-exporter-http-transport==0.66b1
+    # via opentelemetry-exporter-otlp-proto-http
+opentelemetry-exporter-otlp-common==0.66b1
+    # via opentelemetry-exporter-otlp-proto-http
+opentelemetry-exporter-otlp-proto-common==1.45.1
+    # via opentelemetry-exporter-otlp-proto-http
+opentelemetry-exporter-otlp-proto-http==1.45.1
+    # via langfuse
+opentelemetry-proto==1.45.1
+    # via
+    #   opentelemetry-exporter-otlp-proto-common
+    #   opentelemetry-exporter-otlp-proto-http
+opentelemetry-sdk==1.45.1
+    # via
+    #   langfuse
+    #   opentelemetry-exporter-otlp-common
+    #   opentelemetry-exporter-otlp-proto-http
+opentelemetry-semantic-conventions==0.66b1
+    # via opentelemetry-sdk
+orjson==3.13.0 ; platform_python_implementation != 'PyPy'
+    # via langsmith
+packaging==26.3
+    # via
+    #   langchain-core
+    #   langfuse
+    #   langsmith
+protobuf==7.36.2
+    # via
+    #   googleapis-common-protos
+    #   opentelemetry-proto
+psycopg==3.3.6
+    # via lecnotes
+psycopg-binary==3.3.6 ; implementation_name != 'pypy'
+    # via psycopg
+pyasn1==0.6.4
+    # via pyasn1-modules
+pyasn1-modules==0.4.2
+    # via google-auth
+pycparser==3.11 ; implementation_name != 'PyPy' and platform_python_implementation != 'PyPy'
+    # via cffi
+pydantic==2.14.1
+    # via
+    #   fastapi
+    #   google-genai
+    #   langchain-core
+    #   langchain-google-genai
+    #   langfuse
+    #   langsmith
+    #   lecnotes
+    #   pydantic-settings
+pydantic-core==2.50.1
+    # via pydantic
+pydantic-settings==2.16.0
+    # via lecnotes
+python-dotenv==1.2.4
+    # via
+    #   pydantic-settings
+    #   uvicorn
+pyyaml==6.0.3
+    # via
+    #   langchain-core
+    #   lecnotes
+    #   uvicorn
+rapidfuzz==3.14.6
+    # via lecnotes
+requests==2.34.2
+    # via
+    #   google-auth
+    #   google-genai
+    #   langsmith
+    #   opentelemetry-exporter-http-transport
+    #   opentelemetry-exporter-otlp-proto-http
+    #   requests-toolbelt
+requests-toolbelt==1.0.0
+    # via langsmith
+sniffio==1.3.1
+    # via
+    #   google-genai
+    #   langsmith
+sqlalchemy==2.1.5
+    # via
+    #   alembic
+    #   lecnotes
+starlette==1.8.0
+    # via fastapi
+structlog==26.1.0
+    # via lecnotes
+tenacity==9.1.4
+    # via
+    #   google-genai
+    #   langchain-core
+    #   lecnotes
+truststore==0.10.5 ; sys_platform != 'emscripten'
+    # via
+    #   httpcore2
+    #   httpx2
+typing-extensions==4.16.0
+    # via
+    #   alembic
+    #   anyio
+    #   fastapi
+    #   google-genai
+    #   httpx2
+    #   langchain-core
+    #   langchain-protocol
+    #   langfuse
+    #   langsmith
+    #   opentelemetry-api
+    #   opentelemetry-exporter-otlp-proto-http
+    #   opentelemetry-sdk
+    #   opentelemetry-semantic-conventions
+    #   psycopg
+    #   pydantic
+    #   pydantic-core
+    #   pydantic-settings
+    #   sqlalchemy
+    #   starlette
+    #   typing-inspection
+typing-inspection==0.4.4
+    # via
+    #   fastapi
+    #   pydantic
+    #   pydantic-settings
+tzdata==2026.5 ; sys_platform == 'win32'
+    # via psycopg
+urllib3==2.8.0
+    # via requests
+uuid-utils==0.17.1
+    # via
+    #   langchain-core
+    #   langsmith
+uvicorn==0.54.0
+    # via lecnotes
+uvloop==0.23.0 ; platform_python_implementation != 'PyPy' and sys_platform != 'cygwin' and sys_platform != 'win32'
+    # via uvicorn
+watchfiles==1.3.0
+    # via uvicorn
+websockets==16.1.1
+    # via
+    #   google-genai
+    #   langsmith
+    #   uvicorn
+wrapt==2.5.1
+    # via langfuse
+xxhash==4.0.1
+    # via langsmith
+zstandard==0.25.0
+    # via langsmith
