@@ -22,7 +22,11 @@ IPv6-only); URL-encode special characters in the password (`@` → `%40`).
 
 ## Run
 
+Full local walkthrough (API + UI + things to try): [`docs/local-testing.md`](docs/local-testing.md).
+
 ```bash
+uv run lecnotes serve                               # API + job runner → http://127.0.0.1:8000/docs
+cd apps/web && npm install && npm run dev           # UI → http://localhost:3000
 uv run lecnotes run <youtube-url> --preset stem     # notes/<video_id>.md + per-stage cost
 uv run lecnotes run <url> --rerun-from extract      # recompute from a stage (rest cached)
 uv run lecnotes run <url> --no-db --no-trace        # in-memory cache, no Langfuse
