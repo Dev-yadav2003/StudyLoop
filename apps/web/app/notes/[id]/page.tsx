@@ -9,6 +9,8 @@ import remarkGfm from "remark-gfm";
 
 import { api, exportUrl, toApiError } from "@/lib/api";
 
+import { PracticeQuestions } from "./practice";
+
 export default function NotesPage() {
   const { id } = useParams<{ id: string }>();
   const [copied, setCopied] = useState(false);
@@ -61,6 +63,7 @@ export default function NotesPage() {
           {notes.data.markdown}
         </ReactMarkdown>
       </div>
+      {notes.data.units.length > 0 && <PracticeQuestions notesId={notes.data.id} />}
     </article>
   );
 }

@@ -1,15 +1,16 @@
 """Eval runner (step 6.2): run the pipeline on every recorded perception fixture and score it.
 
     uv run python -m evals.run --label "extract v2" [--stage extract] [--video ID ...]
-                               [--judge-model gemini-3-flash-preview] [--no-db]
+                               [--judge-model gemini-3-flash-preview] [--no-db] [--qa]
 
 Perception is replayed from `tests/fixtures/perception_<id>.json` (no YouTube access, no
 perception quota); everything after it runs for real, through the stage cache, so only
 changed stages cost anything. `--stage X` forces X and everything downstream.
 
 Per video: perception metrics + keypoint recall when golden references exist, faithfulness
-(LLM judge) and verify drop rate always. The run record (versions, models, judge, metrics,
-every StageRun) goes to evals/reports/runs/ — feed two of them to `evals.compare`.
+(LLM judge) and verify drop rate always; with `--qa`, practice-question correctness and
+yield. The run record (versions, models, judge, metrics, every StageRun) goes to
+evals/reports/runs/ — feed two of them to `evals.compare`.
 """
 
 from __future__ import annotations
@@ -31,6 +32,7 @@ from evals.metrics.board_recall import board_recall
 from evals.metrics.boundary_f1 import boundary_f1, predicted_boundaries
 from evals.metrics.faithfulness import faithfulness
 from evals.metrics.keypoint_recall import keypoint_recall
+from evals.metrics.qa_correctness import qa_correctness
 from evals.metrics.redundancy import redundancy
 from evals.metrics.wer_terms import term_error_rate, wer
 from lecnotes.adapters.cache.memory import InMemoryStageCache
@@ -39,7 +41,14 @@ from lecnotes.adapters.catalog.static import StaticCatalog
 from lecnotes.adapters.perception.fake import FakePerceiver
 from lecnotes.bootstrap import assemble
 from lecnotes.config import Settings, get_settings
-from lecnotes.domain import JobOptions, PerceptionResult, StageRun, SubjectPreset, VideoMeta
+from lecnotes.domain import (
+    JobOptions,
+    PerceptionResult,
+    QaLevel,
+    StageRun,
+    SubjectPreset,
+    VideoMeta,
+)
 from lecnotes.llm.gateway import LLMGateway, ModelOptions
 from lecnotes.observability.logging import configure_logging
 from lecnotes.ports.cache import StageCache
@@ -68,7 +77,10 @@ HIGHER_IS_BETTER = {
     "term_error_rate": False,
     "verify_dropped_rate": False,
     "redundancy": False,
+    "qa_correctness": True,
+    "qa_yield": True,
 }
+QA_COUNT = 5
 
 
 class VideoResult(BaseModel):
@@ -132,6 +144,7 @@ async def run_eval(
     video_ids: Sequence[str] | None = None,
     rerun_from: str | None = None,
     judge_model: str | None = None,
+    qa: bool = False,
 ) -> RunRecord:
     golden_videos = {v.id: v for v in load_videos(golden)}
     ids = list(video_ids) if video_ids else fixture_ids(fixtures)
@@ -185,6 +198,15 @@ async def run_eval(
                 gateway, doc.units, doc.evidence, model=judge_model, options=JUDGE_OPTIONS
             )
             metrics["faithfulness"] = score.score
+        if qa and doc.units:
+            qset = await services.qa.generate(
+                job_id=job_id, video=meta, units=doc.units, level=QaLevel.MIXED, count=QA_COUNT
+            )
+            judged = await qa_correctness(
+                gateway, qset.questions, doc.units, model=judge_model, options=JUDGE_OPTIONS
+            )
+            metrics["qa_correctness"] = judged.score
+            metrics["qa_yield"] = len(qset.questions) / QA_COUNT
         if video_id in golden_videos:
             refs = load_references(video_id, golden)
             spoken = " ".join(s.text for s in sorted(perception.segments, key=lambda s: s.start_s))
@@ -238,6 +260,7 @@ async def _main(args: argparse.Namespace) -> None:
         "video_ids": args.video,
         "rerun_from": args.stage,
         "judge_model": args.judge_model,
+        "qa": args.qa,
     }
     if args.no_db:
         record = await run_eval(settings, gateway, cache=InMemoryStageCache(), **common)
@@ -267,6 +290,7 @@ def main() -> None:
     parser.add_argument("--video", action="append", help="limit to these video ids")
     parser.add_argument("--judge-model", default="gemini-3-flash-preview")
     parser.add_argument("--no-db", action="store_true")
+    parser.add_argument("--qa", action="store_true", help="also generate and judge questions")
     run_async(_main(parser.parse_args()))
 
 

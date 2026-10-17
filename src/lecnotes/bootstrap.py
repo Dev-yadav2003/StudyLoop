@@ -25,12 +25,14 @@ from lecnotes.jobs.runner import JobRunner
 from lecnotes.llm.gateway import LLMGateway
 from lecnotes.observability.metrics import InMemoryStageRunSink, TeeStageRunSink
 from lecnotes.pipeline.orchestrator import AnyStage, Orchestrator
+from lecnotes.pipeline.qa_service import QaService
 from lecnotes.pipeline.registry import Pipeline
 from lecnotes.pipeline.stages.align.align import AlignStage
 from lecnotes.pipeline.stages.align.chunk import ChunkStage
 from lecnotes.pipeline.stages.extract import ExtractStage
 from lecnotes.pipeline.stages.merge import MergeStage
 from lecnotes.pipeline.stages.perceive import PerceiveStage
+from lecnotes.pipeline.stages.qa import QaStage
 from lecnotes.pipeline.stages.render import RenderStage
 from lecnotes.pipeline.stages.resolve import ResolveStage
 from lecnotes.pipeline.stages.validate import ValidateStage
@@ -47,6 +49,7 @@ from lecnotes.storage.repositories.stage_runs import PostgresStageRunSink
 @dataclass
 class Services:
     pipeline: Pipeline
+    qa: QaService
     runs: InMemoryStageRunSink
     """In-memory copy of every StageRun of this process (CLI summary, debugging)."""
 
@@ -90,7 +93,11 @@ def assemble(
     pipeline = Pipeline(
         orchestrator, ResolveStage(catalog), video_stages(settings, perceiver, gateway)
     )
-    return Services(pipeline=pipeline, runs=runs)
+    qa = QaService(
+        orchestrator,
+        QaStage(gateway, model=settings.text_model, prompt_version=settings.qa_prompt_version),
+    )
+    return Services(pipeline=pipeline, qa=qa, runs=runs)
 
 
 @asynccontextmanager
@@ -134,6 +141,7 @@ class ApiContainer:
     notes: NotesRepository
     pipeline: Pipeline
     runner: JobRunner
+    qa: QaService
     runner_task: asyncio.Task[None] | None = None
 
 
@@ -150,7 +158,9 @@ async def api_container(settings: Settings) -> AsyncIterator[ApiContainer]:
         )
         notes = NotesRepository(engine)
         runner = JobRunner(queue, services.pipeline, notes, poll_s=settings.worker_poll_s)
-        container = ApiContainer(settings, engine, queue, notes, services.pipeline, runner)
+        container = ApiContainer(
+            settings, engine, queue, notes, services.pipeline, runner, services.qa
+        )
         stop = asyncio.Event()
         if settings.run_worker:
             container.runner_task = asyncio.create_task(runner.run_forever(stop))

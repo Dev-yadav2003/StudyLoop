@@ -116,6 +116,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/notes/{notes_id}/qa": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Practice Questions
+         * @description Grounded practice questions. Each cites the notes its answer comes from and links to
+         *     where they are taught. The same request again is served from the cache.
+         */
+        post: operations["practice_questions_v1_notes__notes_id__qa_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/jobs/{job_id}/stages": {
         parameters: {
             query?: never;
@@ -309,6 +330,51 @@ export interface components {
             /** Units */
             units: components["schemas"]["KnowledgeUnit"][];
         };
+        /** QaCreate */
+        QaCreate: {
+            /** @default mixed */
+            level: components["schemas"]["QaLevel"];
+            /**
+             * Count
+             * @default 5
+             */
+            count: number;
+        };
+        /**
+         * QaLevel
+         * @description What the user asks for.
+         * @enum {string}
+         */
+        QaLevel: "recall" | "application" | "mixed";
+        /**
+         * QuestionLevel
+         * @enum {string}
+         */
+        QuestionLevel: "recall" | "application";
+        /** QuestionOut */
+        QuestionOut: {
+            /** Id */
+            id: string;
+            level: components["schemas"]["QuestionLevel"];
+            /** Question */
+            question: string;
+            /** Answer */
+            answer: string;
+            /** Units */
+            units: components["schemas"]["UnitRef"][];
+            /** Timestamps */
+            timestamps: components["schemas"]["TimestampLink"][];
+        };
+        /** QuestionSetOut */
+        QuestionSetOut: {
+            /**
+             * Notes Id
+             * Format: uuid
+             */
+            notes_id: string;
+            /** Questions */
+            questions: components["schemas"]["QuestionOut"][];
+        };
         /** RerunOut */
         RerunOut: {
             job: components["schemas"]["JobOut"];
@@ -366,6 +432,25 @@ export interface components {
          * @enum {string}
          */
         SubjectPreset: "stem" | "theory" | "general";
+        /** TimestampLink */
+        TimestampLink: {
+            /** Start S */
+            start_s: number;
+            /**
+             * Label
+             * @example 03:29
+             */
+            label: string;
+            /** Url */
+            url: string;
+        };
+        /** UnitRef */
+        UnitRef: {
+            /** Id */
+            id: string;
+            /** Concept */
+            concept: string;
+        };
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -620,6 +705,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    practice_questions_v1_notes__notes_id__qa_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                notes_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QaCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuestionSetOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
                 };
             };
         };

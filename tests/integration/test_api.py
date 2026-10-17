@@ -17,7 +17,7 @@ from lecnotes.jobs.queue import JobQueue
 from lecnotes.jobs.runner import JobRunner
 from lecnotes.storage.repositories.notes import NotesRepository
 from lecnotes.storage.repositories.stage_runs import PostgresStageRunSink
-from tests.pipeline_fakes import URL, VID, fake_services, make_settings
+from tests.pipeline_fakes import UNIT_ID, URL, VID, fake_services, make_settings
 
 ADMIN = {"Authorization": "Bearer s3cret"}
 
@@ -36,7 +36,9 @@ async def api(engine: AsyncEngine, monkeypatch: pytest.MonkeyPatch) -> AsyncIter
     )
     queue, notes = JobQueue(engine), NotesRepository(engine)
     runner = JobRunner(queue, services.pipeline, notes, owner="test")
-    app = create_app(ApiContainer(settings, engine, queue, notes, services.pipeline, runner))
+    app = create_app(
+        ApiContainer(settings, engine, queue, notes, services.pipeline, runner, services.qa)
+    )
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
         yield Api(client, runner)
@@ -71,6 +73,30 @@ async def test_submit_poll_and_read_notes(api: Api) -> None:
     assert export.headers["content-type"].startswith("text/markdown")
     assert f'filename="{VID}.md"' in export.headers["content-disposition"]
     assert export.text == notes["markdown"]
+
+
+async def test_practice_questions_are_grounded_and_cached(api: Api) -> None:
+    job = (await api.client.post("/v1/jobs", json={"url": URL})).json()
+    await api.runner.run_once()
+    notes_id = (await api.client.get(f"/v1/jobs/{job['id']}")).json()["notes_id"]
+
+    first = await api.client.post(f"/v1/notes/{notes_id}/qa", json={"level": "mixed", "count": 3})
+    assert first.status_code == 200
+    (q,) = first.json()["questions"]  # the one citing a made-up note was dropped
+    assert (q["id"], q["level"]) == ("q01", "recall")
+    assert q["units"] == [{"id": UNIT_ID, "concept": "enumerate()"}]
+    (ts,) = q["timestamps"]
+    assert ts["url"] == f"https://youtu.be/{VID}?t={int(ts['start_s'])}"
+
+    again = await api.client.post(f"/v1/notes/{notes_id}/qa", json={"level": "mixed", "count": 3})
+    assert again.json() == first.json()
+    history = (await api.client.get(f"/v1/admin/jobs/{job['id']}/stages", headers=ADMIN)).json()
+    assert [r["cache_hit"] for r in history if r["stage"] == "qa"] == [False, True]
+
+    bad = await api.client.post(f"/v1/notes/{notes_id}/qa", json={"count": 50})
+    assert bad.status_code == 422
+    missing = await api.client.post(f"/v1/notes/{uuid4()}/qa", json={})
+    assert missing.status_code == 404
 
 
 async def test_same_video_returns_the_existing_job(api: Api) -> None:
@@ -151,7 +177,9 @@ async def test_admin_disabled_without_token(
     services, _ = fake_services(settings, PostgresStageCache(engine))
     queue, notes = JobQueue(engine), NotesRepository(engine)
     runner = JobRunner(queue, services.pipeline, notes)
-    app = create_app(ApiContainer(settings, engine, queue, notes, services.pipeline, runner))
+    app = create_app(
+        ApiContainer(settings, engine, queue, notes, services.pipeline, runner, services.qa)
+    )
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=app), base_url="http://test"
     ) as client:

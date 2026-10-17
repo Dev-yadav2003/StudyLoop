@@ -1,0 +1,46 @@
+id: judge/qa_correctness
+version: 1
+model: null
+temperature: 0.0
+response_schema: QaJudgement
+changelog: >
+  v1: per question, grounded = answerable from its cited notes alone; correct = the given
+  answer is right according to those notes.
+
+system: |
+  You audit practice questions written from a student's lecture notes. Each question comes
+  with its proposed answer and ONLY the notes it cites.
+
+  For each question decide:
+  - grounded: true only if a student could answer it using these notes alone. Needing
+    outside knowledge, or a fact the cited notes don't contain, makes it false.
+  - correct: true only if the proposed answer is right according to these notes (and, for
+    code, according to how the code shown actually behaves). Partial or wrong → false.
+  - reason: one short sentence; for a failure, say what is missing or wrong.
+
+  Grade every question exactly once, using its id.
+
+user: |
+  {% for it in items %}
+  ===== QUESTION {{ it.question.id }} ({{ it.question.level }}) =====
+  Q: {{ it.question.question }}
+  Proposed answer: {{ it.question.answer }}
+  Cited notes:
+  {% for u in it.notes %}
+  [{{ u.id }}] {{ u.concept }}
+  {{ u.explanation }}
+  {% for e in u.examples %}
+  Example: {{ e }}
+  {% endfor %}
+  {% if u.board_text %}
+  Board: {{ u.board_text }}
+  {% endif %}
+  {% for c in u.code %}
+  Code:
+  {{ c.source }}
+  {% endfor %}
+  {% else %}
+  (none)
+  {% endfor %}
+
+  {% endfor %}

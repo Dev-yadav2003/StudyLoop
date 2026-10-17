@@ -20,6 +20,7 @@ from lecnotes.domain.job import (
 from lecnotes.domain.knowledge import CodeBlock, Evidence, KnowledgeUnit, VideoSpan
 from lecnotes.domain.notes import NotesDocument
 from lecnotes.domain.perception import PerceptionResult, PerceptionRun
+from lecnotes.domain.qa import QaLevel, QaRequest, Question, QuestionLevel, QuestionSet
 from lecnotes.domain.transcript import TranscriptSegment, TranscriptSource
 from lecnotes.domain.usage import LLMUsage
 from lecnotes.domain.video import VideoMeta, VideoRef
@@ -45,6 +46,11 @@ __all__ = [
     "NotesDocument",
     "PerceptionResult",
     "PerceptionRun",
+    "QaLevel",
+    "QaRequest",
+    "Question",
+    "QuestionLevel",
+    "QuestionSet",
     "StageRun",
     "StageRunStatus",
     "SubjectPreset",

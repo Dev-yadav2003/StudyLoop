@@ -18,6 +18,7 @@ from lecnotes.config import Settings
 from lecnotes.domain import VideoMeta
 from lecnotes.llm.gateway import LLMGateway
 from lecnotes.pipeline.stages.extract import ExtractedCode, ExtractedUnit, ExtractOutput
+from lecnotes.pipeline.stages.qa import QaItem, QaOutput
 from lecnotes.pipeline.stages.verify import VerifyOutput
 from lecnotes.ports.cache import StageCache
 from lecnotes.ports.metrics import StageRunSink
@@ -26,6 +27,7 @@ SAMPLE = Path(__file__).parent / "fixtures" / "perceive_output_sample.json"
 VID = "dQw4w9WgXcQ"
 URL = f"https://www.youtube.com/watch?v={VID}"
 VIDEO = VideoMeta(video_id=VID, title="Python Iteration Tools", duration_s=754)
+UNIT_ID = f"{VID}-c001-u01"  # the one unit the default script yields
 CODE = 'names = ["ada", "alan"]\nfor i, name in enumerate(names):\n    print(i, name)'
 
 
@@ -53,7 +55,22 @@ def default_script() -> dict[str, Scripted | Sequence[Scripted]]:
         segment_ids=["s0002"],
         board_state_ids=["b0002"],
     )
-    return {"extract": ExtractOutput(units=[unit]), "verify": VerifyOutput(results=[])}
+    qa = QaOutput(
+        questions=[
+            QaItem(
+                level="recall",
+                question="What does enumerate() give you?",
+                answer="The index and the item.",
+                unit_ids=[UNIT_ID],
+            ),
+            QaItem(level="application", question="Invented?", answer="x", unit_ids=["nope"]),
+        ]
+    )
+    return {
+        "extract": ExtractOutput(units=[unit]),
+        "verify": VerifyOutput(results=[]),
+        "qa": qa,
+    }
 
 
 def fake_services(

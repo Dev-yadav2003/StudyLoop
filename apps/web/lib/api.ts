@@ -12,6 +12,8 @@ export type Job = components["schemas"]["JobOut"];
 export type Notes = components["schemas"]["NotesOut"];
 export type StageProgress = components["schemas"]["StageProgress"];
 export type SubjectPreset = components["schemas"]["JobCreate"]["subject_preset"];
+export type QaLevel = NonNullable<components["schemas"]["QaCreate"]["level"]>;
+export type QuestionSet = components["schemas"]["QuestionSetOut"];
 
 /** The API's uniform error body ({"error": {code, message, request_id}}) or a network error. */
 export class ApiError extends Error {

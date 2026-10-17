@@ -10,7 +10,14 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from lecnotes.domain import JobStatus, KnowledgeUnit, SubjectPreset, VideoMeta
+from lecnotes.domain import (
+    JobStatus,
+    KnowledgeUnit,
+    QaLevel,
+    QuestionLevel,
+    SubjectPreset,
+    VideoMeta,
+)
 
 
 class ErrorBody(BaseModel):
@@ -83,3 +90,33 @@ class StageRunOut(BaseModel):
 class RerunOut(BaseModel):
     job: JobOut
     rerun_from: str | None
+
+
+class QaCreate(BaseModel):
+    level: QaLevel = QaLevel.MIXED
+    count: int = Field(default=5, ge=1, le=10)
+
+
+class UnitRef(BaseModel):
+    id: str
+    concept: str
+
+
+class TimestampLink(BaseModel):
+    start_s: float
+    label: str = Field(examples=["03:29"])
+    url: str
+
+
+class QuestionOut(BaseModel):
+    id: str
+    level: QuestionLevel
+    question: str
+    answer: str
+    units: list[UnitRef]
+    timestamps: list[TimestampLink]
+
+
+class QuestionSetOut(BaseModel):
+    notes_id: UUID
+    questions: list[QuestionOut]
