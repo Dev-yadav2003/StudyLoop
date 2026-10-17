@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 
 from lecnotes.domain import LLMUsage, StageRun
+from lecnotes.ports.metrics import StageRunSink
 
 
 @dataclass(frozen=True)
@@ -40,3 +41,14 @@ class InMemoryStageRunSink:
 
     async def record(self, run: StageRun) -> None:
         self.runs.append(run)
+
+
+class TeeStageRunSink:
+    """Send every run to several sinks (e.g. Postgres + an in-memory copy for a CLI summary)."""
+
+    def __init__(self, *sinks: StageRunSink) -> None:
+        self._sinks = sinks
+
+    async def record(self, run: StageRun) -> None:
+        for sink in self._sinks:
+            await sink.record(run)

@@ -76,6 +76,9 @@ class Settings(BaseSettings):
     perceive_prompt_version: int = Field(default=1, ge=1)
     perceive_timeout_s: float = Field(default=600, gt=0, description="Video calls are slow")
 
+    # --- extraction ---
+    extract_prompt_version: int = Field(default=1, ge=1)
+
     # --- chunking (seconds) ---
     chunk_min_s: int = Field(default=120, gt=0)
     chunk_max_s: int = Field(default=300, gt=0)

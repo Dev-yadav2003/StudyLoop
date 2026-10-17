@@ -78,6 +78,7 @@ async def main() -> None:
     result_path.write_text(run.result.model_dump_json(indent=2), encoding="utf-8")
     meta = {
         "fingerprint": perceiver.fingerprint,
+        "duration_s": duration_s,
         "usage": [u.model_dump(mode="json") for u in run.usage],
         "dropped": run.dropped,
         "repaired": run.repaired,

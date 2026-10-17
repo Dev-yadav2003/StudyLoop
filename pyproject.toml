@@ -24,6 +24,9 @@ dependencies = [
     "rapidfuzz",
 ]
 
+[project.scripts]
+lecnotes = "lecnotes.cli:main"
+
 [dependency-groups]
 dev = [
     "pytest",

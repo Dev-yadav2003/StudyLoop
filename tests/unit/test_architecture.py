@@ -20,7 +20,13 @@ RULES: dict[str, tuple[set[str], set[str] | None]] = {
     "cache": ({"lecnotes.cache"}, {"pydantic"}),
     "prompts": ({"lecnotes.prompts"}, {"pydantic", "jinja2", "yaml", "langchain_core"}),
     "observability": (
-        {"lecnotes", "lecnotes.config", "lecnotes.observability"},
+        {
+            "lecnotes",
+            "lecnotes.config",
+            "lecnotes.domain",
+            "lecnotes.observability",
+            "lecnotes.ports",
+        },
         # langchain_core only for the Langfuse<->LangChain callback bridge.
         {"structlog", "langfuse", "langchain_core"},
     ),
@@ -82,7 +88,11 @@ def violations(layer: str) -> list[str]:
         for mod in imports_of(path):
             top = mod.split(".")[0]
             if top == "lecnotes":
-                ok = any(mod == p or mod.startswith(p + ".") for p in internal_ok)
+                # The bare package matches only itself (`from lecnotes import __version__`);
+                # as a prefix it would allow every lecnotes.* import.
+                ok = any(
+                    mod == p or (p != "lecnotes" and mod.startswith(p + ".")) for p in internal_ok
+                )
             elif top in sys.stdlib_module_names or top == "__future__":
                 ok = True
             else:
