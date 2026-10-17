@@ -196,3 +196,26 @@ async def test_subject_preset_is_part_of_the_cache_key() -> None:
 )
 def test_appears_on(text: str, expected: bool) -> None:
     assert appears_on(text, CHUNK.board_states) is expected
+
+
+async def test_early_mention_does_not_drag_the_link_back() -> None:
+    """Regression for the first real run: an intro sentence at 00:26 ("today: zip and
+    enumerate") was cited together with the teaching at ~03:29, so the link pointed at 00:26."""
+    chunk = AlignedChunk(
+        id="c001",
+        video_id=VID,
+        start_s=0,
+        end_s=300,
+        segments=[
+            TranscriptSegment(id="s_intro", start_s=26, end_s=31, text="today zip and enumerate"),
+            TranscriptSegment(id="s1", start_s=209, end_s=220, text="wrap names in enumerate"),
+            TranscriptSegment(id="s2", start_s=221, end_s=240, text="it gives index and item"),
+        ],
+        board_states=CHUNK.board_states,
+    )
+    out, _ = await extract(
+        ExtractOutput(units=[unit(segment_ids=["s_intro", "s1", "s2"], code=[])]), [chunk]
+    )
+    [u] = out.units
+    assert [(s.start_s, s.end_s) for s in u.spans] == [(209, 240), (26, 31)]
+    assert u.start_s == 209  # primary moment drives ordering and the main link

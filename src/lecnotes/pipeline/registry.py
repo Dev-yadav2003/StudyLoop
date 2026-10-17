@@ -1,6 +1,6 @@
 """The pipeline as a whole, for the one video a link points at (ADR 0007):
 
-    resolve → perceive → validate → align → chunk → extract → (verify) → render
+    resolve → perceive → validate → align → chunk → extract → (merge) → (verify) → render
 
 Construction of concrete adapters lives in `lecnotes.bootstrap` (composition root).
 """
@@ -20,8 +20,10 @@ from lecnotes.pipeline.stages.resolve import ResolveRequest, ResolveStage
 
 log = get_logger(__name__)
 
-VIDEO_STAGE_ORDER = ("perceive", "validate", "align", "chunk", "extract", "verify", "render")
-OPTIONAL_STAGES = frozenset({"verify"})  # feature-flagged
+VIDEO_STAGE_ORDER = (
+    "perceive", "validate", "align", "chunk", "extract", "merge", "verify", "render",
+)  # fmt: skip
+OPTIONAL_STAGES = frozenset({"merge", "verify"})  # feature-flagged
 
 
 class Pipeline:
@@ -32,13 +34,12 @@ class Pipeline:
         video_stages: Sequence[AnyStage],
     ) -> None:
         names = tuple(s.name for s in video_stages)
-        allowed = {
-            VIDEO_STAGE_ORDER,
-            tuple(n for n in VIDEO_STAGE_ORDER if n not in OPTIONAL_STAGES),
-        }
-        if names not in allowed:
+        # The fixed order, with any optional stages left out.
+        expected = tuple(n for n in VIDEO_STAGE_ORDER if n in names or n not in OPTIONAL_STAGES)
+        if names != expected:
             raise ValueError(
-                f"video stages must be {VIDEO_STAGE_ORDER} (verify optional), got {names}"
+                f"video stages must follow {VIDEO_STAGE_ORDER} (optional: "
+                f"{sorted(OPTIONAL_STAGES)}), got {names}"
             )
         check_chain(video_stages, video_stages[0].input_model)
         if video_stages[-1].output_model is not NotesDocument:

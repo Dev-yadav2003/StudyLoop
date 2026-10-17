@@ -110,7 +110,7 @@ async def test_real_chunking_change_shows_only_downstream_stages_changed(
     assert {r.stage for r in video.stage_runs} >= {"perceive", "extract", "verify", "render"}
     assert all(r.cache_key for r in video.stage_runs if r.stage != "resolve")
 
-    assert changed_stages(before, after) == ["chunk", "extract", "verify", "render"]
+    assert changed_stages(before, after) == ["chunk", "extract", "merge", "verify", "render"]
     report = render(before, after)
     assert "| perceive | no |" in report
     assert "| align | no |" in report

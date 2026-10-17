@@ -24,6 +24,7 @@ from lecnotes.pipeline.registry import Pipeline
 from lecnotes.pipeline.stages.align.align import AlignStage
 from lecnotes.pipeline.stages.align.chunk import ChunkStage
 from lecnotes.pipeline.stages.extract import ExtractStage
+from lecnotes.pipeline.stages.merge import MergeStage
 from lecnotes.pipeline.stages.perceive import PerceiveStage
 from lecnotes.pipeline.stages.render import RenderStage
 from lecnotes.pipeline.stages.resolve import ResolveStage
@@ -54,6 +55,12 @@ def video_stages(settings: Settings, perceiver: Perceiver, gateway: LLMGateway) 
             gateway, model=settings.text_model, prompt_version=settings.extract_prompt_version
         ),
     ]
+    if settings.features.merge:
+        stages.append(
+            MergeStage(
+                gateway, model=settings.text_model, prompt_version=settings.merge_prompt_version
+            )
+        )
     if settings.features.verify:
         stages.append(
             VerifyStage(

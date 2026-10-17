@@ -30,6 +30,7 @@ from evals.metrics.board_recall import board_recall
 from evals.metrics.boundary_f1 import boundary_f1, predicted_boundaries
 from evals.metrics.faithfulness import faithfulness
 from evals.metrics.keypoint_recall import keypoint_recall
+from evals.metrics.redundancy import redundancy
 from evals.metrics.wer_terms import term_error_rate, wer
 from evals.notes_report import PRESET, video_meta
 from lecnotes.adapters.cache.memory import InMemoryStageCache
@@ -65,6 +66,7 @@ HIGHER_IS_BETTER = {
     "wer": False,
     "term_error_rate": False,
     "verify_dropped_rate": False,
+    "redundancy": False,
 }
 
 
@@ -163,6 +165,7 @@ async def run_eval(
         metrics: dict[str, float | None] = {
             "faithfulness": None,
             "verify_dropped_rate": doc.verify.dropped_rate if doc.verify else None,
+            "redundancy": redundancy(doc.units).rate,
         }
         if doc.evidence is not None and doc.units:
             score = await faithfulness(

@@ -113,6 +113,7 @@ async def test_one_link_to_notes_then_cache_then_rerun(settings: Settings) -> No
     assert [r.stage for r in svc.runs.runs if not r.cache_hit] == [
         "resolve",
         "extract",
+        "merge",
         "verify",
         "render",
     ]

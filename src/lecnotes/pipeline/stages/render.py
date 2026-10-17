@@ -1,8 +1,8 @@
 """Knowledge units → Markdown notes (no AI). Deterministic: same units → byte-identical output.
 
 Sections are ordered by when they are first taught, units by time. Every concept links to
-the moment it was taught (`https://youtu.be/<id>?t=<s>`), one link per span, so a concept
-taught at several moments (merged in Phase 7) lists every occurrence.
+the moment it was taught (`https://youtu.be/<id>?t=<s>`): the primary moment first, then
+"(also …)" for every other moment it came up — nothing is dropped.
 """
 
 from __future__ import annotations
@@ -35,7 +35,10 @@ def _link(span: VideoSpan) -> str:
 
 
 def _unit(unit: KnowledgeUnit) -> str:
-    links = " · ".join(_link(s) for s in unit.spans)
+    primary, *others = unit.spans  # primary = where it is taught (see primary_first)
+    links = _link(primary)
+    if others:
+        links += " (also " + ", ".join(_link(s) for s in others) + ")"
     parts = [f"### {_one_line(unit.concept)} · {links}", unit.explanation.strip()]
     if unit.board_text:
         parts += ["**On the board:**", fence(unit.board_text, "text")]
@@ -69,7 +72,7 @@ def render_markdown(video: VideoMeta, units: list[KnowledgeUnit]) -> str:
 
 class RenderStage(Stage[ExtractedUnits, NotesDocument]):
     name = "render"
-    version = 3  # v2: + evidence and verify summary; v3: single `video`
+    version = 4  # v2: + evidence/verify; v3: single `video`; v4: primary link + (also …)
     input_model = ExtractedUnits
     output_model = NotesDocument
 

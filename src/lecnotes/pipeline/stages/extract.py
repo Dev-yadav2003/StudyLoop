@@ -27,6 +27,7 @@ from lecnotes.domain import (
     TranscriptSegment,
     VideoSpan,
 )
+from lecnotes.domain.knowledge import primary_first
 from lecnotes.llm.gateway import LLMGateway
 from lecnotes.observability.logging import get_logger
 from lecnotes.pipeline.context import RunContext
@@ -77,7 +78,7 @@ def appears_on(text: str, boards: list[BoardState]) -> bool:
 
 class ExtractStage(Stage[Chunks, ExtractedUnits]):
     name = "extract"
-    version = 2  # v2: output carries the evidence (for verify)
+    version = 3  # v2: output carries the evidence; v3: one span per moment, primary first
     input_model = Chunks
     output_model = ExtractedUnits
 
@@ -179,18 +180,39 @@ def to_unit(
         board_text=board_text,
         code=code,
         section=raw.section.strip() or None,
-        spans=[_span(chunk.video_id, [segments[i] for i in seg_ids], cited_boards)],
+        spans=_spans(chunk.video_id, [segments[i] for i in seg_ids], cited_boards),
         evidence=[
             Evidence(video_id=chunk.video_id, segment_ids=seg_ids, board_state_ids=board_ids)
         ],
     )
 
 
-def _span(video_id: str, segments: list[TranscriptSegment], boards: list[BoardState]) -> VideoSpan:
-    """From the cited evidence: speech times if any (that's when it was taught), else boards."""
-    if segments:
-        start, end = min(s.start_s for s in segments), max(s.end_s for s in segments)
-    else:
+MOMENT_GAP_S = 60.0
+
+
+def _spans(
+    video_id: str, segments: list[TranscriptSegment], boards: list[BoardState]
+) -> list[VideoSpan]:
+    """From the cited evidence — never from the model. Cited speech is split into separate
+    moments wherever it pauses > MOMENT_GAP_S, so one early mention (an intro saying "today:
+    zip and enumerate") can't drag the link minutes before the actual teaching. The longest
+    moment comes first. Without speech, the boards' visibility is used."""
+    if not segments:
         start = min(b.t_first_seen for b in boards)
         end = max(b.t_last_seen for b in boards)
-    return VideoSpan(video_id=video_id, start_s=start, end_s=max(end, start + 1))
+        return [VideoSpan(video_id=video_id, start_s=start, end_s=max(end, start + 1))]
+    moments: list[list[TranscriptSegment]] = []
+    for seg in sorted(segments, key=lambda s: s.start_s):
+        if moments and seg.start_s - moments[-1][-1].end_s <= MOMENT_GAP_S:
+            moments[-1].append(seg)
+        else:
+            moments.append([seg])
+    spans = [
+        VideoSpan(
+            video_id=video_id,
+            start_s=m[0].start_s,
+            end_s=max(max(s.end_s for s in m), m[0].start_s + 1),
+        )
+        for m in moments
+    ]
+    return primary_first(spans)

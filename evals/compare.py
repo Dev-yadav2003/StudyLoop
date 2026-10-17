@@ -23,7 +23,7 @@ from evals.run import HIGHER_IS_BETTER, RUNS_DIR, RunRecord
 from lecnotes.domain import StageRun
 
 STAGE_ORDER = [
-    "resolve", "perceive", "validate", "align", "chunk", "extract", "verify", "render",
+    "resolve", "perceive", "validate", "align", "chunk", "extract", "merge", "verify", "render",
 ]  # fmt: skip
 GATED_METRICS = ("faithfulness", "keypoint_recall")
 EPSILON = 1e-9

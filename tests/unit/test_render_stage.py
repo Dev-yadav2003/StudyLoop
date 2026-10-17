@@ -115,3 +115,19 @@ async def test_render_stage_builds_notes_document() -> None:
     assert doc.video == VIDEO
     assert doc.units == UNITS
     assert doc.markdown == render_markdown(VIDEO, UNITS)
+
+
+def test_primary_link_first_then_other_moments() -> None:
+    taught = unit("u1", 209, "enumerate()", "Tools").model_copy(
+        update={
+            "spans": [
+                VideoSpan(video_id=VID, start_s=209, end_s=254),
+                VideoSpan(video_id=VID, start_s=26, end_s=31),
+            ]
+        }
+    )
+    md = render_markdown(VIDEO, [taught])
+    assert (
+        f"### enumerate() · [03:29](https://youtu.be/{VID}?t=209) "
+        f"(also [00:26](https://youtu.be/{VID}?t=26))"
+    ) in md

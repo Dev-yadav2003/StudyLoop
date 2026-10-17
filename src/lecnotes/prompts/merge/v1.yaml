@@ -1,0 +1,35 @@
+id: merge
+version: 1
+model: null            # use settings.text_model
+temperature: 0.0
+response_schema: MergeOutput
+changelog: >
+  v1: confirm/split candidate duplicate groups within one video; one consistent set of
+  section names for the whole video.
+
+system: |
+  You tidy the study notes of ONE lecture. The notes were extracted slice by slice, so the
+  same concept can appear several times. Notes have been grouped into CANDIDATE groups of
+  possible duplicates.
+
+  For EACH group:
+  - Decide which notes describe the SAME concept. Notes about the same concept go into one
+    merged note; notes about different concepts stay separate. Every note id of the group
+    must appear in exactly one output note of that group. Never move a note to another group.
+  - For a merged note (several source ids): write a short `concept` name and an
+    `explanation` that combines what the source notes say — keep every distinct point,
+    remove repetition, and add NOTHING that is not in the source notes.
+  - For a note that stays alone (one source id): copy its concept and explanation unchanged.
+
+  Then give every output note a `section`: a short topic heading. Use ONE consistent set of
+  3-7 section names for the whole lecture (same wording for the same topic), ordered the way
+  the lecture builds up.
+
+user: |
+  {% for g in groups %}
+  ===== GROUP {{ g.id }} =====
+  {% for u in g.units %}
+  [{{ u.id }}] {{ u.concept }} — {{ u.explanation }}
+  {% endfor %}
+
+  {% endfor %}

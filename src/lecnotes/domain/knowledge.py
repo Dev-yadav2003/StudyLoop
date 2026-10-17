@@ -5,6 +5,16 @@ from pydantic import Field, model_validator
 from lecnotes.domain.base import DomainModel, NonEmptyStr, Seconds, VideoId, check_time_order
 
 
+def primary_first(spans: list["VideoSpan"]) -> list["VideoSpan"]:
+    """Longest span first (where the concept is actually taught — teaching takes time, passing
+    mentions are brief), then the other moments in time order."""
+    if not spans:
+        return []
+    primary = max(spans, key=lambda s: (s.end_s - s.start_s, -s.start_s))
+    rest = sorted((s for s in spans if s is not primary), key=lambda s: s.start_s)
+    return [primary, *rest]
+
+
 class VideoSpan(DomainModel):
     """Where something happens in a video. A merged unit keeps one span per occurrence."""
 
@@ -50,7 +60,9 @@ class KnowledgeUnit(DomainModel):
     board_text: str | None = None
     code: list[CodeBlock] = Field(default_factory=list)
     section: str | None = None
-    spans: list[VideoSpan] = Field(min_length=1)
+    spans: list[VideoSpan] = Field(
+        min_length=1, description="Primary teaching moment first, other moments in time order"
+    )
     evidence: list[Evidence] = Field(min_length=1)
 
     @property
