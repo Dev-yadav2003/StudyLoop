@@ -18,7 +18,7 @@ cp .env.example .env.local       # NEXT_PUBLIC_API_URL=http://127.0.0.1:8000
 ## 1. Automated checks (≈ 30 s, no network)
 
 ```bash
-uv run ruff check . && uv run pyright && uv run pytest     # 379 tests incl. real Postgres
+uv run ruff check . && uv run pyright && uv run pytest     # 403 tests incl. real Postgres
 cd apps/web && npm run typecheck && npm run build
 ```
 
