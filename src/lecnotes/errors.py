@@ -1,0 +1,41 @@
+"""Typed errors raised by adapters and the LLM gateway (plan §4.6).
+
+The orchestrator records `type(exc).__name__` as `error_type` in `stage_runs` and shows
+`user_message` to the user. `retryable` tells the job runner whether a later attempt
+(e.g. after the quota resets) could succeed.
+"""
+
+from __future__ import annotations
+
+
+class LecNotesError(Exception):
+    user_message = "Something went wrong while processing this video."
+    retryable = False
+
+
+class UnknownModel(LecNotesError, LookupError):
+    def __init__(self, name: str, *, known: list[str]) -> None:
+        super().__init__(f"unknown model {name!r}; known: {known}")
+        self.name = name
+
+
+class LLMError(LecNotesError):
+    user_message = "The AI model failed to process this video. Please try again later."
+
+    def __init__(self, message: str, *, retryable: bool = False) -> None:
+        super().__init__(message)
+        self.retryable = retryable
+
+
+class QuotaExceeded(LLMError):
+    user_message = "The free AI quota is used up for now. Your job will resume when it resets."
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message, retryable=True)
+
+
+class StructuredOutputError(LLMError):
+    """The model answered, but not in the requested schema (after retries)."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message, retryable=True)
