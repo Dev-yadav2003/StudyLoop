@@ -1,10 +1,11 @@
 from collections import Counter
 from typing import Self
 
-from pydantic import model_validator
+from pydantic import Field, model_validator
 
 from lecnotes.domain.base import DomainModel, VideoId
 from lecnotes.domain.transcript import TranscriptSegment
+from lecnotes.domain.usage import LLMUsage
 from lecnotes.domain.visual import BoardState
 
 
@@ -26,3 +27,12 @@ class PerceptionResult(DomainModel):
         if dupes:
             raise ValueError(f"duplicate evidence ids: {dupes}")
         return self
+
+
+class PerceptionRun(DomainModel):
+    """A perception result plus how it was produced (for metrics, caching and debugging)."""
+
+    result: PerceptionResult
+    usage: list[LLMUsage]
+    dropped: list[str] = Field(default_factory=list, description="Model items rejected, why")
+    repaired: list[str] = Field(default_factory=list, description="Model items fixed, how")

@@ -39,3 +39,19 @@ class StructuredOutputError(LLMError):
 
     def __init__(self, message: str) -> None:
         super().__init__(message, retryable=True)
+
+
+class OutputTruncated(LLMError):
+    """The model hit its output-token limit; the JSON is cut off. Retrying the same request
+    would burn quota for the same result, so this is not retryable."""
+
+
+class PerceptionError(LecNotesError):
+    user_message = (
+        "We could not read this video. It may be private, age-restricted, region-locked, "
+        "or too long."
+    )
+
+    def __init__(self, message: str, *, retryable: bool = False) -> None:
+        super().__init__(message)
+        self.retryable = retryable

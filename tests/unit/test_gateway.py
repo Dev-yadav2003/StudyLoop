@@ -1,20 +1,27 @@
 from decimal import Decimal
 
 import pytest
+from google.genai.types import MediaResolution
 from langchain_core.exceptions import (
     ContextOverflowError,
     ModelAPIError,
     ModelInvalidRequestError,
     ModelRateLimitError,
 )
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 from pydantic import BaseModel, SecretStr
 
 from lecnotes.adapters.llm.fake import FakeLLM
 from lecnotes.config import Settings
-from lecnotes.errors import LLMError, QuotaExceeded, StructuredOutputError, UnknownModel
-from lecnotes.llm.gateway import LLMGateway, gemini_factory
+from lecnotes.errors import (
+    LLMError,
+    OutputTruncated,
+    QuotaExceeded,
+    StructuredOutputError,
+    UnknownModel,
+)
+from lecnotes.llm.gateway import LLMGateway, ModelOptions, gemini_factory
 from lecnotes.llm.pricing import cost_usd
 from lecnotes.llm.rate_limit import rate_limiter, requests_per_minute
 from lecnotes.observability.tracing import traced_stage
@@ -67,7 +74,7 @@ async def test_returns_validated_output_with_usage() -> None:
     assert result.usage.model == FLASH
     assert (result.usage.tokens_in, result.usage.tokens_out) == (10_000, 2_000)
     assert result.usage.cost_usd == Decimal("0.008")
-    assert result.usage.prompt.version == 2
+    assert (result.usage.prompt_id, result.usage.prompt_version) == ("qa", 2)
     assert result.usage.latency_ms >= 0
     assert [(c.prompt_id, c.model) for c in fake.calls] == [("qa", FLASH)]
 
@@ -197,9 +204,40 @@ def test_gemini_factory_disables_sdk_retries_and_shares_limiter(
         langfuse_public_key=SecretStr("k"),
         langfuse_secret_key=SecretStr("k"),
     )
-    model = gemini_factory(settings)(FLASH, 0.3)
+    model = gemini_factory(settings)(FLASH, 0.3, ModelOptions(media_resolution="low"))
 
     assert isinstance(model, ChatGoogleGenerativeAI)
     assert model.max_retries == 1
     assert model.temperature == 0.3
     assert model.rate_limiter is rate_limiter(FLASH, requests_per_minute(FLASH))
+    assert model.media_resolution == MediaResolution.MEDIA_RESOLUTION_LOW
+
+
+async def test_truncated_output_fails_fast_without_retry_or_fallback() -> None:
+    cut = AIMessage(
+        content='{"text": "enumerate yie',
+        response_metadata={"finish_reason": "MAX_TOKENS"},
+        usage_metadata={"input_tokens": 9, "output_tokens": 65_536, "total_tokens": 65_545},
+    )
+    fake = FakeLLM({"qa": cut})
+    with pytest.raises(OutputTruncated):
+        await make_gateway(fake).generate_structured(make_prompt(), Answer)
+    assert len(fake.calls) == 1
+
+
+async def test_model_precedence_and_options_reach_the_factory() -> None:
+    fake = FakeLLM({"qa": ANSWER})
+    gateway = make_gateway(fake)
+    opts = ModelOptions(media_resolution="low", max_output_tokens=1000)
+
+    await gateway.generate_structured(make_prompt(), Answer, model=PRO, options=opts)
+    await gateway.generate_structured(make_prompt(model=LITE), Answer, model=PRO)
+
+    assert [(c.model, c.options) for c in fake.calls] == [(PRO, opts), (LITE, ModelOptions())]
+
+
+async def test_unknown_call_time_model_rejected_before_any_request() -> None:
+    fake = FakeLLM({"qa": ANSWER})
+    with pytest.raises(UnknownModel):
+        await make_gateway(fake).generate_structured(make_prompt(), Answer, model="gemini-typo")
+    assert fake.calls == []

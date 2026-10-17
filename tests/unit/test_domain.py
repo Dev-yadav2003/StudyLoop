@@ -26,6 +26,7 @@ from lecnotes.domain import (
     VideoRef,
     VideoSpan,
 )
+from lecnotes.domain.video import parse_video_id
 
 VID = "dQw4w9WgXcQ"
 NOW = datetime(2026, 1, 1, tzinfo=UTC)
@@ -221,3 +222,41 @@ def _round_trip_cases() -> list[BaseModel]:
 @pytest.mark.parametrize("obj", _round_trip_cases(), ids=lambda o: type(o).__name__)
 def test_json_round_trip(obj: BaseModel) -> None:
     assert type(obj).model_validate_json(obj.model_dump_json()) == obj
+
+
+# --- video links -------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "link",
+    [
+        VID,
+        f"https://www.youtube.com/watch?v={VID}",
+        f"https://youtube.com/watch?v={VID}&list=PL123&t=42s",
+        f"https://m.youtube.com/watch?feature=share&v={VID}",
+        f"https://youtu.be/{VID}?si=abc",
+        f"youtu.be/{VID}",
+        f"https://www.youtube.com/shorts/{VID}",
+        f"https://www.youtube.com/embed/{VID}",
+        f"https://www.youtube.com/live/{VID}?feature=share",
+        f"https://www.youtube-nocookie.com/embed/{VID}",
+    ],
+)
+def test_video_ref_from_url(link: str) -> None:
+    assert VideoRef.from_url(link).video_id == VID
+
+
+@pytest.mark.parametrize(
+    "link",
+    [
+        "",
+        "https://vimeo.com/123456",
+        "https://www.youtube.com/watch?v=short",
+        "https://www.youtube.com/playlist?list=PL123",
+        f"https://evil.com/watch?v={VID}",
+    ],
+)
+def test_video_ref_rejects_non_video_links(link: str) -> None:
+    assert parse_video_id(link) is None
+    with pytest.raises(ValueError, match="not a YouTube video link"):
+        VideoRef.from_url(link)

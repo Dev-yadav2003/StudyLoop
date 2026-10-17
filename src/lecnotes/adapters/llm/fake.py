@@ -11,7 +11,8 @@ gateway attaches to every call.
 A scripted item is one of:
   - a Pydantic model → returned as JSON (parses into the requested schema);
   - a `str`          → returned verbatim (use it to simulate malformed output);
-  - an `Exception`   → raised (simulate 429s, server errors, ...).
+  - an `Exception`   → raised (simulate 429s, server errors, ...);
+  - an `AIMessage`    → returned as-is (full control, e.g. finish_reason="MAX_TOKENS").
 """
 
 from __future__ import annotations
@@ -31,13 +32,16 @@ from langchain_core.outputs import ChatGeneration, ChatResult
 from langchain_core.runnables import Runnable, RunnableLambda
 from pydantic import BaseModel, ConfigDict
 
-Scripted = BaseModel | str | Exception
+from lecnotes.llm.gateway import ModelOptions
+
+Scripted = BaseModel | str | Exception | AIMessage
 
 
 @dataclass(frozen=True)
 class FakeCall:
     prompt_id: str
     model: str
+    options: ModelOptions
     messages: list[BaseMessage]
 
 
@@ -80,12 +84,21 @@ class FakeLLM:
             **kwargs,
         )
 
-    def factory(self, model: str, temperature: float) -> FakeChatModel:
+    def factory(self, model: str, temperature: float, options: ModelOptions) -> FakeChatModel:
         """Matches the gateway's `ModelFactory` signature."""
-        return FakeChatModel(script=self, model_name=model, temperature=temperature)
+        return FakeChatModel(
+            script=self, model_name=model, temperature=temperature, options=options
+        )
 
-    def next(self, prompt_id: str, model: str, messages: list[BaseMessage]) -> Scripted:
-        self.calls.append(FakeCall(prompt_id=prompt_id, model=model, messages=messages))
+    def next(self, prompt_id: str, model: FakeChatModel, messages: list[BaseMessage]) -> Scripted:
+        self.calls.append(
+            FakeCall(
+                prompt_id=prompt_id,
+                model=model.model_name,
+                options=model.options,
+                messages=messages,
+            )
+        )
         if prompt_id in self._repeat:
             return self._repeat[prompt_id]
         queue = self._queues.get(prompt_id)
@@ -100,6 +113,7 @@ class FakeChatModel(BaseChatModel):
     script: FakeLLM
     model_name: str
     temperature: float = 0.0
+    options: ModelOptions = ModelOptions()
 
     @property
     def _llm_type(self) -> str:
@@ -113,9 +127,11 @@ class FakeChatModel(BaseChatModel):
         **kwargs: Any,
     ) -> ChatResult:
         prompt_id = str(run_manager.metadata.get("prompt_id", "")) if run_manager else ""
-        item = self.script.next(prompt_id, self.model_name, messages)
+        item = self.script.next(prompt_id, self, messages)
         if isinstance(item, Exception):
             raise item
+        if isinstance(item, AIMessage):
+            return ChatResult(generations=[ChatGeneration(message=item)])
         content = item if isinstance(item, str) else item.model_dump_json()
         message = AIMessage(
             content=content,
