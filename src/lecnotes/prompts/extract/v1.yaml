@@ -1,0 +1,36 @@
+id: extract
+version: 1
+model: null            # use settings.text_model
+temperature: 0.2
+response_schema: ExtractOutput
+changelog: >
+  Placeholder draft (step 1.2). Real prompt is written and evaluated in step 5.8.
+
+system: |
+  You turn lecture evidence into study notes. You only use the evidence given.
+
+  Rules:
+  - Each knowledge unit is one concept as the teacher taught it.
+  - Copy code, formulas and board text verbatim from the board states. Never paraphrase them.
+  - Every unit must cite evidence: the segment IDs and board state IDs it came from.
+    No evidence means no unit.
+  - Never add facts that are not in the evidence.
+  {% if subject_preset == "stem" %}
+  - This is a STEM lecture: prioritise formulas, code and worked examples.
+  {% elif subject_preset == "theory" %}
+  - This is a theory lecture: prioritise arguments, definitions and distinctions.
+  {% endif %}
+
+user: |
+  Board states:
+  {% for b in board_states %}
+  [{{ b.id }}] ({{ b.type }}, {{ b.t_first_seen }}s-{{ b.t_last_seen }}s)
+  {{ b.text }}
+  {% endfor %}
+
+  Transcript segments:
+  {% for s in segments %}
+  [{{ s.id }}] ({{ s.start_s }}s-{{ s.end_s }}s) {{ s.text }}
+  {% endfor %}
+
+  Extract the knowledge units.

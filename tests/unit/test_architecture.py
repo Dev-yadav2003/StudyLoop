@@ -16,6 +16,11 @@ SRC = Path(__file__).resolve().parents[2] / "src" / "lecnotes"
 RULES: dict[str, tuple[set[str], set[str] | None]] = {
     "domain": ({"lecnotes.domain"}, {"pydantic"}),
     "ports": ({"lecnotes.domain", "lecnotes.ports"}, {"pydantic"}),
+    "prompts": ({"lecnotes.prompts"}, {"pydantic", "jinja2", "yaml", "langchain_core"}),
+    "observability": (
+        {"lecnotes", "lecnotes.config", "lecnotes.observability"},
+        {"structlog", "langfuse"},
+    ),
 }
 
 
