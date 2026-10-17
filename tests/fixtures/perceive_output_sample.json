@@ -1,0 +1,41 @@
+{
+  "board_states": [
+    {
+      "first_seen": "00:00",
+      "last_seen": "00:41",
+      "type": "slide",
+      "text": "Python Iteration Tools\nLecture 4",
+      "description": ""
+    },
+    {
+      "first_seen": "00:42",
+      "last_seen": "02:10",
+      "type": "code",
+      "text": "names = [\"ada\", \"alan\"]\nfor i, name in enumerate(names):\n    print(i, name)",
+      "description": ""
+    },
+    {
+      "first_seen": "02:11",
+      "last_seen": "03:05",
+      "type": "whiteboard",
+      "text": "enumerate(iterable, start=0) -> (index, item)\n[unclear] lazy",
+      "description": "Arrow from a list of names to a list of (index, name) pairs"
+    },
+    {
+      "first_seen": "03:40",
+      "last_seen": "03:10",
+      "type": "slide",
+      "text": "Backwards times: must be dropped",
+      "description": ""
+    }
+  ],
+  "segments": [
+    {"start": "00:01", "end": "00:06", "text": "Today we look at a few iteration tools in Python."},
+    {"start": "00:42", "end": "00:49", "text": "Here enumerate gives you the index and the item at the same time."},
+    {"start": "00:50", "end": "00:50", "text": "Right."},
+    {"start": "01:10", "end": "01:02", "text": "End before start: must be dropped."},
+    {"start": "02:11", "end": "02:20", "text": "   "},
+    {"start": "2:13", "end": "02:25", "text": "The start argument defaults to zero."},
+    {"start": "02:26", "end": "soon", "text": "Unparseable time: must be dropped."}
+  ]
+}
