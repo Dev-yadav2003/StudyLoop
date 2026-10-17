@@ -44,18 +44,21 @@ build-backend = "hatchling.build"
 packages = ["src/lecnotes"]
 
 [tool.uv]
-default-groups = ["dev"]
+default-groups = ["dev", "eval"]
 
 [tool.ruff]
 line-length = 100
 target-version = "py312"
-src = ["src", "tests"]
+src = ["src", "tests", "evals"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF", "ASYNC", "PT"]
 
+[tool.ruff.lint.isort]
+known-first-party = ["lecnotes", "evals", "tests"]
+
 [tool.pyright]
-include = ["src", "tests", "scripts"]
+include = ["src", "tests", "scripts", "evals"]
 pythonVersion = "3.12"
 typeCheckingMode = "standard"
 venvPath = "."

@@ -1,0 +1,10 @@
+# Golden set (step 3.2; grown to 8-10 videos in step 6.3).
+# Every entry needs all 4 files under references/<id>/ (enforced by tests/unit/test_golden.py).
+#
+# videos:
+#   - id: XXXXXXXXXXX          # 11-char YouTube id
+#     title: "Python enumerate and zip"
+#     type: code               # slides | whiteboard | code | mixed
+#     tags: [indian-english]   # fast-talker, poor-audio, playlist:<name>, ...
+#     notes: "small IDE font; scrolls a lot"
+videos: []

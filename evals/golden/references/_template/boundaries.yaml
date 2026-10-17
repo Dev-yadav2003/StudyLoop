@@ -1,0 +1,4 @@
+# Times (MM:SS) where visible content changed: new slide, new writing, erase, scroll.
+# Do not include 00:00.
+boundaries:
+  - "00:42"
