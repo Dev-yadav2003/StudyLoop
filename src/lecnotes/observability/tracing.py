@@ -18,10 +18,10 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Any
+from typing import Any, Protocol
 
 from langchain_core.callbacks import BaseCallbackHandler
-from langfuse import Langfuse, LangfuseSpan, propagate_attributes
+from langfuse import Langfuse, propagate_attributes
 from langfuse.langchain import CallbackHandler
 
 from lecnotes import __version__
@@ -36,6 +36,29 @@ _public_key: str | None = None
 
 class TracingNotInitialized(RuntimeError):
     pass
+
+
+class Span(Protocol):
+    """What callers may use from a span; satisfied by Langfuse spans and `NoopSpan`."""
+
+    @property
+    def trace_id(self) -> str | None: ...
+
+    def update(self, **kwargs: Any) -> Any: ...
+
+
+class NoopSpan:
+    """Used when tracing is off (unit tests, local CLI without Langfuse keys). Production
+    initialises tracing at startup, where missing keys already fail fast."""
+
+    trace_id: str | None = None
+
+    def update(self, **kwargs: Any) -> NoopSpan:
+        return self
+
+
+def tracing_enabled() -> bool:
+    return _client is not None
 
 
 def init_tracing(
@@ -100,10 +123,14 @@ def shutdown_tracing() -> None:
 
 
 @contextmanager
-def traced_job(job_id: str, *, video_id: str | None = None) -> Iterator[LangfuseSpan]:
+def traced_job(job_id: str, *, video_id: str | None = None) -> Iterator[Span]:
     """Root span for one job. All stage spans opened inside become its children."""
-    client = get_langfuse()
     attrs = {"job_id": job_id} | ({"video_id": video_id} if video_id else {})
+    if _client is None:
+        with bind_context(**attrs):
+            yield NoopSpan()
+        return
+    client = _client
     with (
         client.start_as_current_observation(as_type="span", name="job", metadata=attrs) as span,
         propagate_attributes(trace_name=TRACE_NAME, session_id=job_id, metadata=attrs),
@@ -120,9 +147,13 @@ def traced_stage(
     prompt_version: int | None = None,
     input: Any = None,
     metadata: dict[str, Any] | None = None,
-) -> Iterator[LangfuseSpan]:
+) -> Iterator[Span]:
     """Span for one pipeline stage. Records errors on the span, then re-raises."""
-    client = get_langfuse()
+    if _client is None:
+        with bind_context(stage=name, stage_version=version):
+            yield NoopSpan()
+        return
+    client = _client
     stage_meta: dict[str, Any] = {"stage": name, "stage_version": version}
     if prompt_version is not None:
         stage_meta["prompt_version"] = prompt_version

@@ -37,6 +37,23 @@ RULES: dict[str, tuple[set[str], set[str] | None]] = {
     ),
 }
 
+# Stages get concrete dependencies through ports: never import adapters or storage.
+RULES["pipeline"] = (
+    {
+        "lecnotes.cache",
+        "lecnotes.config",
+        "lecnotes.domain",
+        "lecnotes.errors",
+        "lecnotes.llm",
+        "lecnotes.observability",
+        "lecnotes.pipeline",
+        "lecnotes.ports",
+        "lecnotes.prompts",
+        "lecnotes.timefmt",
+    },
+    {"pydantic", "rapidfuzz"},
+)
+
 RULES["storage"] = (
     {"lecnotes.config", "lecnotes.domain", "lecnotes.storage"},
     {"sqlalchemy", "alembic", "psycopg"},

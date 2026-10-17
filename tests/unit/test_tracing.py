@@ -76,7 +76,16 @@ def test_log_lines_carry_trace_and_stage() -> None:
     assert record["stage_version"] == 1
 
 
-def test_using_tracing_before_init_fails_clearly() -> None:
+def test_tracing_off_yields_noop_spans() -> None:
     tracing.shutdown_tracing()
-    with pytest.raises(TracingNotInitialized), traced_stage("resolve", version=1):
-        pass
+    assert not tracing.tracing_enabled()
+    with traced_job("job-x") as job, traced_stage("resolve", version=1) as stage:
+        stage.update(output={"ok": True})  # accepted, ignored
+    assert job.trace_id is None
+    assert stage.trace_id is None
+
+
+def test_get_langfuse_before_init_fails_clearly() -> None:
+    tracing.shutdown_tracing()
+    with pytest.raises(TracingNotInitialized):
+        tracing.get_langfuse()
