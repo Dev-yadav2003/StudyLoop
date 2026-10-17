@@ -32,12 +32,18 @@ class JobOptions(DomainModel):
 class Job(DomainModel):
     id: UUID
     url: NonEmptyStr
+    video_id: str | None = None
     options: JobOptions = JobOptions()
     status: JobStatus = JobStatus.QUEUED
     error: str | None = Field(default=None, description="User-readable failure reason")
+    error_type: str | None = Field(
+        default=None, description="Last error class; also set while a retry is waiting"
+    )
     attempts: int = Field(default=0, ge=0)
     created_at: datetime
     updated_at: datetime
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
 
     @model_validator(mode="after")
     def _error_matches_status(self) -> Self:
