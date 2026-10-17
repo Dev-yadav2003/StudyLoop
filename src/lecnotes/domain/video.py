@@ -70,6 +70,16 @@ class VideoMeta(DomainModel):
     playlist_id: str | None = None
     position: int | None = Field(default=None, ge=0)
 
+    @property
+    def ref(self) -> VideoRef:
+        return VideoRef(
+            video_id=self.video_id, playlist_id=self.playlist_id, position=self.position
+        )
+
+    @property
+    def url(self) -> str:
+        return self.ref.url
+
     def timestamp_url(self, t_s: float) -> str:
         return f"https://youtu.be/{self.video_id}?t={int(t_s)}"
 
