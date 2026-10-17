@@ -12,7 +12,7 @@ With plain pip (Python 3.12):
 
 ```bash
 python -m venv .venv
-.venv\Scriptsctivate            # Windows  (macOS/Linux: source .venv/bin/activate)
+.venv\Scripts\activate             # Windows  (macOS/Linux: source .venv/bin/activate)
 pip install -r requirements-dev.txt   # app + tests/lint/evals (runtime only: requirements.txt)
 ```
 
