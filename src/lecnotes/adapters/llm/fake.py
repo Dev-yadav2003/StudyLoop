@@ -19,6 +19,7 @@ from __future__ import annotations
 from collections import deque
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 from langchain_core.callbacks import CallbackManagerForLLMRun
@@ -62,6 +63,22 @@ class FakeLLM:
         self.tokens_in = tokens_in
         self.tokens_out = tokens_out
         self.calls: list[FakeCall] = []
+
+    @classmethod
+    def from_recordings(
+        cls,
+        recordings: Mapping[str, tuple[Path, type[BaseModel]]],
+        **kwargs: Any,
+    ) -> FakeLLM:
+        """Load real outputs saved as JSON (e.g. by scripts/). Validated on load, so a schema
+        change makes stale recordings fail loudly instead of drifting silently."""
+        return cls(
+            {
+                prompt_id: schema.model_validate_json(path.read_text(encoding="utf-8"))
+                for prompt_id, (path, schema) in recordings.items()
+            },
+            **kwargs,
+        )
 
     def factory(self, model: str, temperature: float) -> FakeChatModel:
         """Matches the gateway's `ModelFactory` signature."""

@@ -6,7 +6,18 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
 from lecnotes.observability import tracing
+from tests.network_guard import block_network
 from tests.support import SpanRecorder
+
+
+@pytest.fixture(autouse=True)
+def _no_network(request: pytest.FixtureRequest) -> Iterator[None]:
+    """Every test is offline unless explicitly marked @pytest.mark.network."""
+    if request.node.get_closest_marker("network"):
+        yield
+        return
+    with block_network():
+        yield
 
 
 @pytest.fixture
