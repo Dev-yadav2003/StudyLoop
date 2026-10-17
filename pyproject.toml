@@ -1,0 +1,68 @@
+[project]
+name = "lecnotes"
+version = "0.1.0"
+description = "Turn YouTube lectures into faithful, timestamped study notes."
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "pydantic>=2",
+    "pydantic-settings",
+    "sqlalchemy>=2",
+    "alembic",
+    "psycopg[binary]",
+    "langchain-core",
+    "langchain-google-genai",
+    "google-genai",
+    "langfuse",
+    "structlog",
+    "jinja2",
+    "pyyaml",
+    "httpx",
+    "tenacity",
+    "rapidfuzz",
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+    "respx",
+    "ruff",
+    "pyright",
+    "pre-commit",
+    "types-pyyaml",
+]
+eval = ["jiwer"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/lecnotes"]
+
+[tool.uv]
+default-groups = ["dev"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF", "ASYNC", "PT"]
+
+[tool.pyright]
+include = ["src", "tests", "scripts"]
+pythonVersion = "3.12"
+typeCheckingMode = "standard"
+venvPath = "."
+venv = ".venv"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"

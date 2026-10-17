@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+build/
+dist/
+
+# Tooling caches
+.pytest_cache/
+.ruff_cache/
+.pyright/
+.coverage
+htmlcov/
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Eval outputs
+evals/reports/*
+!evals/reports/.gitkeep
+
+# Frontend
+node_modules/
+.next/
