@@ -77,6 +77,17 @@ def test_every_golden_video_has_all_reference_files() -> None:
         load_references(video.id)
 
 
+def test_draft_videos_are_excluded_until_finished(tmp_path: Path) -> None:
+    (tmp_path / "videos.yaml").write_text(
+        "videos:\n"
+        "  - {id: aaaaaaaaaaa, title: Done, type: code}\n"
+        "  - {id: bbbbbbbbbbb, title: WIP, type: slides, draft: true}\n",
+        encoding="utf-8",
+    )
+    assert [v.id for v in load_videos(tmp_path)] == ["aaaaaaaaaaa"]
+    assert len(load_videos(tmp_path, include_drafts=True)) == 2
+
+
 def test_videos_file_rejects_bad_entries(tmp_path: Path) -> None:
     (tmp_path / "videos.yaml").write_text(
         "videos:\n  - id: short\n    title: x\n    type: podcast\n", encoding="utf-8"

@@ -43,6 +43,9 @@ class GoldenVideo(_Strict):
         default_factory=list, description="Technical terms spoken in the video (term WER)"
     )
     notes: str = ""
+    draft: bool = Field(
+        default=False, description="References not finished yet: excluded from evals"
+    )
 
     @property
     def url(self) -> str:
@@ -122,9 +125,12 @@ def parse_board_text(source: str) -> list[RefBoard]:
     return boards
 
 
-def load_videos(root: Path = GOLDEN_DIR) -> list[GoldenVideo]:
+def load_videos(root: Path = GOLDEN_DIR, *, include_drafts: bool = False) -> list[GoldenVideo]:
+    """Finished golden videos. Drafts (references still being written) are excluded, so
+    half-written ground truth is never scored."""
     data = yaml.safe_load((root / "videos.yaml").read_text(encoding="utf-8")) or {}
-    return _VideosFile.model_validate(data).videos
+    videos = _VideosFile.model_validate(data).videos
+    return [v for v in videos if include_drafts or not v.draft]
 
 
 def missing_reference_files(video_id: str, root: Path = GOLDEN_DIR) -> list[str]:
