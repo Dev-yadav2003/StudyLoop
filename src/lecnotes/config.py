@@ -126,3 +126,18 @@ def __getattr__(name: str) -> Settings:
     if name == "settings":
         return get_settings()
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+class DatabaseSettings(BaseSettings):
+    """Only the DB URL — for migrations and admin tools, which must not need every app secret."""
+
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+
+    database_url: SecretStr
+
+    @classmethod
+    def load(cls) -> DatabaseSettings:
+        try:
+            return cls()  # pyright: ignore[reportCallIssue] - fields come from env / .env
+        except ValidationError:
+            raise ConfigError("Invalid configuration:\n  DATABASE_URL: required") from None

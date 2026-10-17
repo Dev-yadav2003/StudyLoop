@@ -35,6 +35,11 @@ RULES: dict[str, tuple[set[str], set[str] | None]] = {
     ),
 }
 
+RULES["storage"] = (
+    {"lecnotes.config", "lecnotes.domain", "lecnotes.storage"},
+    {"sqlalchemy", "alembic", "psycopg"},
+)
+
 # Plan §4.3: no LLM call outside the gateway (or the perception adapter, Phase 3).
 LLM_SDKS = {"langchain_google_genai", "google.genai", "google.generativeai"}
 LLM_SDK_ALLOWED = {"llm/gateway.py", "adapters/perception/gemini_url.py"}

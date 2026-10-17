@@ -9,7 +9,7 @@ dependencies = [
     "uvicorn[standard]",
     "pydantic>=2",
     "pydantic-settings",
-    "sqlalchemy>=2",
+    "sqlalchemy[asyncio]>=2",
     "alembic",
     "psycopg[binary]",
     "langchain-core",
