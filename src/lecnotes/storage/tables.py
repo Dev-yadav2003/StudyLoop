@@ -88,18 +88,6 @@ class VideoRow(Base):
     fetched_at: Mapped[datetime] = _created()
 
 
-class JobVideoRow(Base):
-    """Videos of a job, in playlist order."""
-
-    __tablename__ = "job_videos"
-
-    job_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("jobs.id", ondelete="CASCADE"), primary_key=True
-    )
-    position: Mapped[int] = mapped_column(primary_key=True)
-    video_id: Mapped[str] = mapped_column(ForeignKey("videos.video_id"))
-
-
 class StageCacheRow(Base):
     """Whole stage outputs keyed by a content hash (see cache/keys.py)."""
 

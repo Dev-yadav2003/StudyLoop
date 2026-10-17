@@ -26,7 +26,7 @@ from lecnotes.domain import (
     VideoRef,
     VideoSpan,
 )
-from lecnotes.domain.video import parse_video_id
+from lecnotes.domain.video import is_playlist_link, parse_video_id
 
 VID = "dQw4w9WgXcQ"
 NOW = datetime(2026, 1, 1, tzinfo=UTC)
@@ -198,7 +198,7 @@ def _round_trip_cases() -> list[BaseModel]:
             links=[link],
         ),
         unit(),
-        NotesDocument(title="Notes", videos=[meta], units=[unit()], markdown="# Notes"),
+        NotesDocument(title="Notes", video=meta, units=[unit()], markdown="# Notes"),
         Question(
             id="q1",
             level=QuestionLevel.RECALL,
@@ -260,3 +260,16 @@ def test_video_ref_rejects_non_video_links(link: str) -> None:
     assert parse_video_id(link) is None
     with pytest.raises(ValueError, match="not a YouTube video link"):
         VideoRef.from_url(link)
+
+
+@pytest.mark.parametrize(
+    ("link", "expected"),
+    [
+        ("https://www.youtube.com/playlist?list=PL123", True),
+        ("youtube.com/playlist?list=PL123", True),
+        (f"https://www.youtube.com/watch?v={VID}&list=PL123", False),  # that's a video link
+        ("https://vimeo.com/playlist", False),
+    ],
+)
+def test_is_playlist_link(link: str, expected: bool) -> None:
+    assert is_playlist_link(link) is expected

@@ -76,7 +76,7 @@ async def score_videos(
             cache=InMemoryStageCache(),
         )
         options = JobOptions(subject_preset=PRESET.get(video.type, SubjectPreset.GENERAL))
-        [doc] = await services.pipeline.run(video.id, job_id=uuid4(), options=options)
+        doc = await services.pipeline.run(video.id, job_id=uuid4(), options=options)
         kp = await keypoint_recall(
             gateway, doc.markdown, load_references(video.id, golden).keypoints
         )

@@ -88,10 +88,5 @@ async def test_perception_error_propagates_typed() -> None:
 
 
 def test_video_meta_ref() -> None:
-    meta = VIDEO.model_copy(update={"playlist_id": "PL1234567890", "position": 2})
-    assert (meta.ref.video_id, meta.ref.playlist_id, meta.ref.position) == (
-        VIDEO.video_id,
-        "PL1234567890",
-        2,
-    )
-    assert meta.url == f"https://www.youtube.com/watch?v={VIDEO.video_id}"
+    assert VIDEO.ref.video_id == VIDEO.video_id
+    assert VIDEO.url == f"https://www.youtube.com/watch?v={VIDEO.video_id}"

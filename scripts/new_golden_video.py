@@ -32,7 +32,7 @@ async def resolve(url: str) -> VideoMeta:
     settings = get_settings()
     async with httpx.AsyncClient(timeout=20) as http:
         catalog = YouTubeDataApiCatalog(http, settings.youtube_api_key.get_secret_value())
-        return (await catalog.resolve(url)).videos[0]
+        return await catalog.resolve(url)
 
 
 def main() -> None:

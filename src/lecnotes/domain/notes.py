@@ -11,7 +11,7 @@ class NotesDocument(DomainModel):
     """Final output for a job: the structured units plus their rendered Markdown."""
 
     title: NonEmptyStr
-    videos: list[VideoMeta]
+    video: VideoMeta
     units: list[KnowledgeUnit]
     markdown: str
     evidence: PerceptionResult | None = Field(

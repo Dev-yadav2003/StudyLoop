@@ -58,7 +58,13 @@ class PerceptionError(LecNotesError):
 
 
 class InvalidLink(LecNotesError):
-    user_message = "That doesn't look like a YouTube video or playlist link."
+    user_message = "That doesn't look like a link to a YouTube video."
+
+
+class PlaylistNotSupported(InvalidLink):
+    user_message = (
+        "Playlists aren't supported. Open the video you want from the playlist and paste its link."
+    )
 
 
 class VideoUnavailable(LecNotesError):

@@ -112,6 +112,6 @@ async def test_render_stage_builds_notes_document() -> None:
     ctx = RunContext(job_id=uuid4(), video=VIDEO)
     doc = await RenderStage().run(ExtractedUnits(units=UNITS), ctx)
     assert doc.title == VIDEO.title
-    assert doc.videos == [VIDEO]
+    assert doc.video == VIDEO
     assert doc.units == UNITS
     assert doc.markdown == render_markdown(VIDEO, UNITS)

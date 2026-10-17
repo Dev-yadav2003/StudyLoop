@@ -1,8 +1,7 @@
-"""The pipeline as a whole: resolve once, then the per-video chain.
+"""The pipeline as a whole, for the one video a link points at (ADR 0007):
 
-    resolve → [per video] perceive → validate → align → chunk → extract → (verify) → render
+    resolve → perceive → validate → align → chunk → extract → (verify) → render
 
-Playlists produce one notes document per video until the merge stage (Phase 7).
 Construction of concrete adapters lives in `lecnotes.bootstrap` (composition root).
 """
 
@@ -12,7 +11,7 @@ from collections.abc import Sequence
 from typing import cast
 from uuid import UUID
 
-from lecnotes.domain import JobOptions, NotesDocument, ResolvedVideos
+from lecnotes.domain import JobOptions, NotesDocument, VideoMeta
 from lecnotes.observability.logging import bind_context, get_logger
 from lecnotes.observability.tracing import traced_job
 from lecnotes.pipeline.context import RunContext
@@ -66,22 +65,20 @@ class Pipeline:
         job_id: UUID,
         options: JobOptions | None = None,
         rerun_from: str | None = None,
-    ) -> list[NotesDocument]:
+    ) -> NotesDocument:
         opts = options or JobOptions()
         with traced_job(str(job_id)):
-            resolved = cast(
-                ResolvedVideos,
+            video = cast(
+                VideoMeta,
                 await self._orch.run_stage(
                     self._resolve, ResolveRequest(url=url), RunContext(job_id=job_id, options=opts)
                 ),
             )
-            docs = []
-            for video in resolved.videos:
-                ctx = RunContext(job_id=job_id, options=opts, video=video)
-                with bind_context(video_id=video.video_id):
-                    doc = await self._orch.run_chain(
-                        self._stages, video, ctx, rerun_from=rerun_from
-                    )
-                docs.append(cast(NotesDocument, doc))
-                log.info("pipeline.video_done", video_id=video.video_id, units=len(docs[-1].units))
-            return docs
+            ctx = RunContext(job_id=job_id, options=opts, video=video)
+            with bind_context(video_id=video.video_id):
+                doc = cast(
+                    NotesDocument,
+                    await self._orch.run_chain(self._stages, video, ctx, rerun_from=rerun_from),
+                )
+            log.info("pipeline.done", video_id=video.video_id, units=len(doc.units))
+            return doc

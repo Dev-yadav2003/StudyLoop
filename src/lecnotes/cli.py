@@ -33,7 +33,7 @@ ServicesFactory = Callable[[Settings, bool], AbstractAsyncContextManager[Service
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="lecnotes", description="Lecture-to-Notes dev CLI")
     sub = parser.add_subparsers(dest="command", required=True)
-    run = sub.add_parser("run", help="run the pipeline on a YouTube video or playlist link")
+    run = sub.add_parser("run", help="run the pipeline on one YouTube video link")
     run.add_argument("url")
     run.add_argument("--preset", choices=[p.value for p in SubjectPreset], default="general")
     run.add_argument("--out", type=Path, default=Path("notes"))
@@ -63,7 +63,7 @@ async def _run(args: argparse.Namespace, settings: Settings, services: ServicesF
     job_id = uuid.uuid4()
     async with services(settings, not args.no_db) as svc:
         try:
-            docs = await svc.pipeline.run(
+            doc = await svc.pipeline.run(
                 args.url,
                 job_id=job_id,
                 options=JobOptions(subject_preset=SubjectPreset(args.preset)),
@@ -77,10 +77,9 @@ async def _run(args: argparse.Namespace, settings: Settings, services: ServicesF
         print(format_runs(svc.runs.runs))
 
     args.out.mkdir(parents=True, exist_ok=True)
-    for doc in docs:
-        path = args.out / f"{doc.videos[0].video_id}.md"
-        path.write_text(doc.markdown, encoding="utf-8")
-        print(f"\n{doc.title}: {len(doc.units)} units -> {path}")
+    path = args.out / f"{doc.video.video_id}.md"
+    path.write_text(doc.markdown, encoding="utf-8")
+    print(f"\n{doc.title}: {len(doc.units)} units -> {path}")
     print(f"job {job_id}")
     return 0
 

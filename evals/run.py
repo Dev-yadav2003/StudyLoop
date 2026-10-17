@@ -153,7 +153,7 @@ async def run_eval(
 
         job_id = uuid4()
         preset = PRESET.get(gv.type, SubjectPreset.GENERAL)
-        [doc] = await services.pipeline.run(
+        doc = await services.pipeline.run(
             video_id,
             job_id=job_id,
             options=JobOptions(subject_preset=preset),

@@ -88,7 +88,7 @@ async def test_one_link_to_notes_then_cache_then_rerun(settings: Settings) -> No
     llm = scripted_llm()
     svc = services(settings, llm)
 
-    [doc] = await svc.pipeline.run(URL, job_id=uuid4())
+    doc = await svc.pipeline.run(URL, job_id=uuid4())
 
     assert doc.title == VIDEO.title
     assert [u.concept for u in doc.units] == ["enumerate()"]
@@ -102,7 +102,7 @@ async def test_one_link_to_notes_then_cache_then_rerun(settings: Settings) -> No
 
     # Second run: every cacheable stage is a hit, no new LLM calls.
     svc.runs.runs.clear()
-    [again] = await svc.pipeline.run(URL, job_id=uuid4())
+    again = await svc.pipeline.run(URL, job_id=uuid4())
     assert again == doc
     assert [r.stage for r in svc.runs.runs if not r.cache_hit] == ["resolve"]  # never cached
     assert len(llm.calls) == extract_calls

@@ -87,7 +87,7 @@ async def test_notes_report_runs_pipeline_on_fixtures_and_judges(
     assert score.keypoints.recall == 0.5
     assert [v.id for v in missing] == [MISSING]
     # Duration estimated from evidence when the fixture has no .meta.json.
-    assert score.doc.videos[0].duration_s > 0
+    assert score.doc.video.duration_s > 0
 
     report = render(scores, missing, settings)
     assert f"| {VID} | code | 1 | 50% (1/2) | 0 | 0 |" in report
