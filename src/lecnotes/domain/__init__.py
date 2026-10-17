@@ -15,7 +15,7 @@ from lecnotes.domain.perception import PerceptionResult, PerceptionRun
 from lecnotes.domain.qa import Question, QuestionLevel
 from lecnotes.domain.transcript import TranscriptSegment, TranscriptSource
 from lecnotes.domain.usage import LLMUsage
-from lecnotes.domain.video import VideoMeta, VideoRef
+from lecnotes.domain.video import ResolvedVideos, SkippedVideo, VideoMeta, VideoRef
 from lecnotes.domain.visual import UNCLEAR_MARKER, BoardState, BoardType
 
 __all__ = [
@@ -37,6 +37,8 @@ __all__ = [
     "PerceptionRun",
     "Question",
     "QuestionLevel",
+    "ResolvedVideos",
+    "SkippedVideo",
     "StageRun",
     "StageRunStatus",
     "SubjectPreset",

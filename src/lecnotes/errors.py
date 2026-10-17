@@ -55,3 +55,29 @@ class PerceptionError(LecNotesError):
     def __init__(self, message: str, *, retryable: bool = False) -> None:
         super().__init__(message)
         self.retryable = retryable
+
+
+class InvalidLink(LecNotesError):
+    user_message = "That doesn't look like a YouTube video or playlist link."
+
+
+class VideoUnavailable(LecNotesError):
+    user_message = (
+        "This video can't be processed: it is private, deleted, live, or not yet processed "
+        "by YouTube. Only public videos are supported."
+    )
+
+
+class CatalogError(LecNotesError):
+    user_message = "We couldn't look up this video on YouTube. Please try again later."
+
+    def __init__(self, message: str, *, retryable: bool = False) -> None:
+        super().__init__(message)
+        self.retryable = retryable
+
+
+class CatalogQuotaExceeded(CatalogError):
+    user_message = "The YouTube lookup quota is used up for today. Your job will resume later."
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message, retryable=True)

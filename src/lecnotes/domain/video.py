@@ -30,6 +30,19 @@ def parse_video_id(link: str) -> str | None:
     return candidate if candidate and _ID.match(candidate) else None
 
 
+_PLAYLIST_ID = re.compile(r"^[A-Za-z0-9_-]{10,64}$")
+
+
+def parse_playlist_id(link: str) -> str | None:
+    """`list=` id from a /playlist link. Watch links with `list=` are treated as the video."""
+    parsed = urlparse(link.strip() if "://" in link else f"https://{link.strip()}")
+    host = (parsed.hostname or "").removeprefix("www.").removeprefix("m.")
+    if host not in ("youtube.com", "music.youtube.com") or parsed.path != "/playlist":
+        return None
+    candidate = parse_qs(parsed.query).get("list", [None])[0]
+    return candidate if candidate and _PLAYLIST_ID.match(candidate) else None
+
+
 class VideoRef(DomainModel):
     """A video to process, as resolved from the user's link."""
 
@@ -59,3 +72,16 @@ class VideoMeta(DomainModel):
 
     def timestamp_url(self, t_s: float) -> str:
         return f"https://youtu.be/{self.video_id}?t={int(t_s)}"
+
+
+class SkippedVideo(DomainModel):
+    video_id: str
+    reason: NonEmptyStr
+
+
+class ResolvedVideos(DomainModel):
+    """What a user's link expands to: one video, or a playlist's usable videos in order."""
+
+    videos: list[VideoMeta] = Field(min_length=1)
+    playlist_id: str | None = None
+    skipped: list[SkippedVideo] = Field(default_factory=list)
