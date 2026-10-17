@@ -58,7 +58,7 @@ class Settings(BaseSettings):
     database_url: SecretStr
     langfuse_public_key: SecretStr
     langfuse_secret_key: SecretStr
-    langfuse_host: str = "https://cloud.langfuse.com"
+    langfuse_base_url: str = "https://cloud.langfuse.com"
 
     # --- models ---
     perceive_model: str = "gemini-2.5-flash"

@@ -1,0 +1,110 @@
+"""Langfuse tracing.
+
+One trace per job, one span per pipeline stage. LLM generations created by the LangChain
+callback handler (Phase 2) nest under whichever stage span is current, because Langfuse v5
+is OpenTelemetry-based and tracks the active span in context.
+
+    init_tracing(settings)
+    with traced_job("job-123", video_id="abc"):
+        with traced_stage("perceive", version=1, prompt_version=1) as span:
+            ...
+            span.update(output={"segments": 42})
+
+Each context manager also binds the matching logging fields, so log lines and spans can be
+correlated by `trace_id`.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Iterator
+from contextlib import contextmanager
+from typing import Any
+
+from langfuse import Langfuse, LangfuseSpan, propagate_attributes
+
+from lecnotes import __version__
+from lecnotes.config import Settings
+from lecnotes.observability.logging import bind_context
+
+TRACE_NAME = "lecture-notes"
+
+_client: Langfuse | None = None
+
+
+class TracingNotInitialized(RuntimeError):
+    pass
+
+
+def init_tracing(settings: Settings | None = None, *, client: Langfuse | None = None) -> Langfuse:
+    """Create the process-wide Langfuse client. Pass `client` to inject one (tests, scripts)."""
+    global _client
+    if client is None:
+        if settings is None:
+            raise ValueError("init_tracing needs either settings or a client")
+        client = Langfuse(
+            public_key=settings.langfuse_public_key.get_secret_value(),
+            secret_key=settings.langfuse_secret_key.get_secret_value(),
+            base_url=settings.langfuse_base_url,
+            environment=settings.env,
+            release=__version__,
+        )
+    _client = client
+    return client
+
+
+def get_langfuse() -> Langfuse:
+    if _client is None:
+        raise TracingNotInitialized("call init_tracing() at startup before tracing")
+    return _client
+
+
+def shutdown_tracing() -> None:
+    """Flush pending spans and release the client. Call on app shutdown / end of script."""
+    global _client
+    if _client is not None:
+        _client.shutdown()
+        _client = None
+
+
+@contextmanager
+def traced_job(job_id: str, *, video_id: str | None = None) -> Iterator[LangfuseSpan]:
+    """Root span for one job. All stage spans opened inside become its children."""
+    client = get_langfuse()
+    attrs = {"job_id": job_id} | ({"video_id": video_id} if video_id else {})
+    with (
+        client.start_as_current_observation(as_type="span", name="job", metadata=attrs) as span,
+        propagate_attributes(trace_name=TRACE_NAME, session_id=job_id, metadata=attrs),
+        bind_context(trace_id=span.trace_id, **attrs),
+    ):
+        yield span
+
+
+@contextmanager
+def traced_stage(
+    name: str,
+    version: int,
+    *,
+    prompt_version: int | None = None,
+    input: Any = None,
+    metadata: dict[str, Any] | None = None,
+) -> Iterator[LangfuseSpan]:
+    """Span for one pipeline stage. Records errors on the span, then re-raises."""
+    client = get_langfuse()
+    stage_meta: dict[str, Any] = {"stage": name, "stage_version": version}
+    if prompt_version is not None:
+        stage_meta["prompt_version"] = prompt_version
+    with (
+        client.start_as_current_observation(
+            as_type="span",
+            name=f"stage:{name}",
+            version=f"v{version}",
+            input=input,
+            metadata=stage_meta | (metadata or {}),
+        ) as span,
+        bind_context(stage=name, stage_version=version, trace_id=span.trace_id),
+    ):
+        try:
+            yield span
+        except Exception as exc:
+            span.update(level="ERROR", status_message=f"{type(exc).__name__}: {exc}")
+            raise
