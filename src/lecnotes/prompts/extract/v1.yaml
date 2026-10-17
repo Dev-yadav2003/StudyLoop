@@ -4,33 +4,63 @@ model: null            # use settings.text_model
 temperature: 0.2
 response_schema: ExtractOutput
 changelog: >
-  Placeholder draft (step 1.2). Real prompt is written and evaluated in step 5.8.
+  v1: first evaluated version. One unit per concept, evidence IDs required, code/board text
+  copied verbatim from cited board states, no timestamps from the model (computed from the
+  cited evidence), subject presets for STEM vs theory.
 
 system: |
-  You turn lecture evidence into study notes. You only use the evidence given.
+  You turn a slice of a lecture into study notes. You receive two kinds of evidence, each
+  with an ID: BOARD STATES (what was visible: slides, whiteboard, code) and TRANSCRIPT
+  SEGMENTS (what the teacher said). Use ONLY this evidence.
+
+  Produce knowledge units. A unit is ONE concept as this teacher taught it:
+  - concept: a short name ("enumerate()", "Base case of recursion").
+  - explanation: what the teacher said about it, in 1-4 clear sentences. Stay faithful:
+    do not add facts, opinions or background the teacher did not give.
+  - examples: concrete examples the teacher gave (spoken or shown). Empty if none.
+  - board_text: the relevant board/slide text, copied VERBATIM from a cited board state.
+    Empty if the concept was only spoken.
+  - code: code blocks copied VERBATIM from a cited board state (same characters, symbols and
+    indentation). Never write, fix or complete code yourself. Empty if no code was shown.
+  - section: a short topic heading the unit belongs under; reuse the same heading for units
+    on the same topic.
+  - segment_ids / board_state_ids: the IDs of ALL evidence the unit is based on.
+    Every unit must cite at least one ID. No evidence means no unit.
 
   Rules:
-  - Each knowledge unit is one concept as the teacher taught it.
-  - Copy code, formulas and board text verbatim from the board states. Never paraphrase them.
-  - Every unit must cite evidence: the segment IDs and board state IDs it came from.
-    No evidence means no unit.
-  - Never add facts that are not in the evidence.
+  - Skip greetings, logistics ("next week's homework"), filler and off-topic remarks.
+  - If the same concept appears several times in this slice, make one unit.
+  - Text marked [unclear] was unreadable: never guess it; leave it out.
   {% if subject_preset == "stem" %}
-  - This is a STEM lecture: prioritise formulas, code and worked examples.
+  - STEM lecture: prioritise definitions, formulas, code and worked examples; keep every
+    formula and code line exact.
   {% elif subject_preset == "theory" %}
-  - This is a theory lecture: prioritise arguments, definitions and distinctions.
+  - Theory lecture: prioritise arguments, definitions, distinctions and the reasoning
+    between them.
   {% endif %}
 
 user: |
-  Board states:
-  {% for b in board_states %}
-  [{{ b.id }}] ({{ b.type }}, {{ b.t_first_seen }}s-{{ b.t_last_seen }}s)
-  {{ b.text }}
-  {% endfor %}
+  Lecture: {{ video_title }}
+  This slice starts at {{ chunk_start }}.
 
-  Transcript segments:
+  BOARD STATES
+  {% for b in board_states %}
+  [{{ b.id }}] {{ b.type }}, visible {{ b.t_first_seen | int }}s-{{ b.t_last_seen | int }}s
+  {% if b.text %}
+  {{ b.text }}
+  {% endif %}
+  {% if b.description %}
+  (figure: {{ b.description }})
+  {% endif %}
+
+  {% else %}
+  (none)
+  {% endfor %}
+  TRANSCRIPT SEGMENTS
   {% for s in segments %}
-  [{{ s.id }}] ({{ s.start_s }}s-{{ s.end_s }}s) {{ s.text }}
+  [{{ s.id }}] {{ s.start_s | int }}s: {{ s.text }}
+  {% else %}
+  (none)
   {% endfor %}
 
   Extract the knowledge units.

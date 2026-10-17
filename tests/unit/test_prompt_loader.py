@@ -114,12 +114,20 @@ def test_extract_v1_renders_with_domain_objects() -> None:
     )
     seg = TranscriptSegment(id="s1", start_s=12, end_s=20, text="enumerate gives you the index")
 
-    prompt = load("extract", version=1, subject_preset="stem", board_states=[board], segments=[seg])
+    prompt = load(
+        "extract",
+        version=1,
+        subject_preset="stem",
+        video_title="Iteration",
+        chunk_start="00:10",
+        board_states=[board],
+        segments=[seg],
+    )
 
     assert prompt.ref == PromptRef(id="extract", version=1)
     system, user = (str(m.content) for m in prompt.messages)
     assert "STEM lecture" in system
-    assert "theory lecture" not in system
-    assert "[b1] (code, 10.0s-60.0s)" in user
+    assert "Theory lecture" not in system
+    assert "[b1] code, visible 10s-60s" in user
     assert "for i, x in enumerate(xs):" in user
-    assert "[s1] (12.0s-20.0s) enumerate gives you the index" in user
+    assert "[s1] 12s: enumerate gives you the index" in user
