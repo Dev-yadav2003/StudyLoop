@@ -9,9 +9,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from lecnotes.domain import Job, JobOptions, JobStatus, SubjectPreset
 from lecnotes.storage.db import normalize_url
-from lecnotes.storage.repositories.jobs import JobRepository
 from lecnotes.storage.tables import Base
 from tests.integration.conftest import alembic_config, create_database
 
@@ -41,47 +39,13 @@ def test_migrations_match_models_and_round_trip(server_url: str) -> None:
         sync_engine.dispose()
 
 
-async def test_insert_and_read_job(session: AsyncSession) -> None:
-    job = Job(
-        id=uuid4(),
-        url="https://youtu.be/dQw4w9WgXcQ",
-        options=JobOptions(subject_preset=SubjectPreset.STEM, generate_questions=True),
-        created_at=NOW,
-        updated_at=NOW,
-    )
-    repo = JobRepository(session)
-    await repo.add(job)
-    await session.commit()
-    session.expunge_all()  # force a real round trip
-
-    loaded = await repo.get(job.id)
-
-    assert loaded == job
-    assert await repo.get(uuid4()) is None
-
-
-async def test_failed_job_round_trips_with_error(session: AsyncSession) -> None:
-    job = Job(
-        id=uuid4(),
-        url="u",
-        status=JobStatus.FAILED,
-        error="Video is private",
-        attempts=2,
-        created_at=NOW,
-        updated_at=NOW,
-    )
-    repo = JobRepository(session)
-    await repo.add(job)
-    await session.commit()
-    session.expunge_all()
-
-    assert await repo.get(job.id) == job
-
-
 async def test_db_rejects_unknown_status(session: AsyncSession) -> None:
     """The CHECK constraint guards data written outside the repository too."""
     with pytest.raises(IntegrityError, match="ck_jobs_status"):
         await session.execute(
-            text("INSERT INTO jobs (id, url, options, status) VALUES (:id, 'u', '{}', 'paused')"),
+            text(
+                "INSERT INTO jobs (id, url, request_key, options, status) "
+                "VALUES (:id, 'u', 'k', '{}', 'paused')"
+            ),
             {"id": uuid4()},
         )

@@ -27,6 +27,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -60,21 +61,44 @@ def _created() -> Mapped[datetime]:
     return mapped_column(server_default=func.now())
 
 
+ACTIVE_JOB_STATUSES = (JobStatus.QUEUED, JobStatus.RUNNING, JobStatus.SUCCEEDED)
+
+
 class JobRow(Base):
+    """A job is also a queue entry: leased with FOR UPDATE SKIP LOCKED (jobs/queue.py)."""
+
     __tablename__ = "jobs"
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True)
     url: Mapped[str]
+    video_id: Mapped[str | None]
+    request_key: Mapped[str]
     options: Mapped[dict[str, Any]]
     status: Mapped[str]
     error: Mapped[str | None]
+    error_type: Mapped[str | None]
     attempts: Mapped[int] = mapped_column(server_default="0")
+    rerun_from: Mapped[str | None]
+    lease_owner: Mapped[str | None]
+    leased_until: Mapped[datetime | None]
+    run_after: Mapped[datetime] = mapped_column(server_default=func.now())
     created_at: Mapped[datetime] = _created()
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
+    started_at: Mapped[datetime | None]
+    finished_at: Mapped[datetime | None]
 
     __table_args__ = (
         _one_of("status", JobStatus, "status"),
-        Index(None, "status", "created_at"),
+        Index(None, "status", "run_after"),
+        # Idempotency: one active job per (video, options). Failed jobs may be resubmitted.
+        Index(
+            "uq_jobs_request_key_active",
+            "request_key",
+            unique=True,
+            postgresql_where=text(
+                "status IN (" + ", ".join(f"'{s.value}'" for s in ACTIVE_JOB_STATUSES) + ")"
+            ),
+        ),
     )
 
 
@@ -150,6 +174,9 @@ class NotesRow(Base):
     )
     title: Mapped[str]
     markdown: Mapped[str]
+    video: Mapped[dict[str, Any]]
+    evidence: Mapped[dict[str, Any] | None]
+    verify: Mapped[dict[str, Any] | None]
     created_at: Mapped[datetime] = _created()
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
 
