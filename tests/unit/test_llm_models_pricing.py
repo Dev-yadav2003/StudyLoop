@@ -16,7 +16,7 @@ def test_known_token_counts() -> None:
 
 
 def test_zero_tokens_cost_nothing() -> None:
-    assert cost_usd("gemini-2.5-pro", tokens_in=0, tokens_out=0) == 0
+    assert cost_usd("gemini-3-flash-preview", tokens_in=0, tokens_out=0) == 0
 
 
 def test_negative_tokens_rejected() -> None:

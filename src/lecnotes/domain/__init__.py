@@ -7,6 +7,7 @@ from lecnotes.domain.evidence import (
     ExtractedUnits,
     ValidatedEvidence,
     ValidationIssue,
+    VerifySummary,
 )
 from lecnotes.domain.job import (
     Job,
@@ -56,6 +57,7 @@ __all__ = [
     "TranscriptSource",
     "ValidatedEvidence",
     "ValidationIssue",
+    "VerifySummary",
     "VideoMeta",
     "VideoRef",
     "VideoSpan",

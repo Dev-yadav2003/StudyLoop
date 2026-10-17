@@ -28,7 +28,7 @@ from lecnotes.observability.tracing import traced_stage
 from lecnotes.prompts.loader import PromptSpec, RenderedPrompt
 from tests.support import SpanRecorder
 
-FLASH, LITE, PRO = "gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.5-pro"
+FLASH, LITE, PRO = "gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-3-flash-preview"
 
 
 class Answer(BaseModel):

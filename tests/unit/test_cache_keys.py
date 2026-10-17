@@ -50,7 +50,9 @@ def test_prompt_version_change_misses(settings: Settings) -> None:
 
 
 def test_unrelated_config_change_hits(settings: Settings) -> None:
-    unrelated = settings.model_copy(update={"chunk_max_s": 240, "text_model": "gemini-2.5-pro"})
+    unrelated = settings.model_copy(
+        update={"chunk_max_s": 240, "text_model": "gemini-3-flash-preview"}
+    )
     relevant = settings.model_copy(update={"perceive_fps": 2.0})
 
     def with_config(s: Settings) -> str:

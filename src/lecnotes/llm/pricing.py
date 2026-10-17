@@ -3,7 +3,7 @@
 We run on the free tier, so the billed cost is $0. These are paid-tier list prices, used to
 report what each stage *would* cost — the number that matters when comparing prompt and
 model versions. Source: https://ai.google.dev/gemini-api/docs/pricing
-(text/image/video input; prompts <= 200k tokens).
+(text/image/video input; prompts <= 200k tokens; checked 2026-10-17).
 """
 
 from __future__ import annotations
@@ -25,7 +25,7 @@ class Price:
 PRICES: dict[str, Price] = {
     "gemini-2.5-flash": Price(input_per_m=Decimal("0.30"), output_per_m=Decimal("2.50")),
     "gemini-2.5-flash-lite": Price(input_per_m=Decimal("0.10"), output_per_m=Decimal("0.40")),
-    "gemini-2.5-pro": Price(input_per_m=Decimal("1.25"), output_per_m=Decimal("10.00")),
+    "gemini-3-flash-preview": Price(input_per_m=Decimal("0.50"), output_per_m=Decimal("3.00")),
 }
 
 

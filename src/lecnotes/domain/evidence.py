@@ -35,6 +35,22 @@ class Chunks(DomainModel):
     chunks: list[AlignedChunk]
 
 
+class VerifySummary(DomainModel):
+    checked: int = Field(ge=0)
+    supported: int = Field(ge=0)
+    revised: int = Field(ge=0)
+    dropped: int = Field(ge=0)
+    unverified: int = Field(ge=0, description="Not returned by the verifier: kept, flagged")
+
+    @property
+    def dropped_rate(self) -> float:
+        return self.dropped / self.checked if self.checked else 0.0
+
+
 class ExtractedUnits(DomainModel):
     units: list[KnowledgeUnit]
-    dropped: list[str] = Field(default_factory=list, description="Model units rejected, why")
+    dropped: list[str] = Field(default_factory=list, description="Units/parts removed, why")
+    evidence: PerceptionResult | None = Field(
+        default=None, description="All evidence the units may cite (needed by verify)"
+    )
+    verify: VerifySummary | None = None

@@ -12,6 +12,7 @@ from lecnotes.adapters.perception.schema import PerceiveOutput, to_perception_re
 from lecnotes.config import Settings
 from lecnotes.llm.gateway import LLMGateway
 from lecnotes.pipeline.stages.extract import ExtractedUnit, ExtractOutput
+from lecnotes.pipeline.stages.verify import VerifyOutput
 
 VID, MISSING = "abcdefghijk", "zzzzzzzzzzz"
 SAMPLE = Path(__file__).parents[1] / "fixtures" / "perceive_output_sample.json"
@@ -67,6 +68,7 @@ async def test_notes_report_runs_pipeline_on_fixtures_and_judges(
                     )
                 ]
             ),
+            "verify": VerifyOutput(results=[]),  # nothing returned → units kept, unverified
             "judge/keypoint_recall": KeypointJudgement(
                 verdicts=[
                     KeypointVerdict(id="k1", covered=True, quote=explanation),

@@ -1,8 +1,12 @@
 """Registry of the LLMs we are allowed to call, with their free-tier limits.
 
-Limits change without notice. Values here are the Gemini API free tier as last checked;
-verify at https://ai.google.dev/gemini-api/docs/rate-limits (or AI Studio's usage page)
-and edit this file — it is the single source of truth for the rate limiter.
+Google no longer publishes free-tier RPM/RPD (checked 2026-10-17): they are only shown in
+AI Studio for your key. Values below are conservative and marked unverified — confirm them
+in AI Studio and edit this file, the single source of truth for the rate limiter.
+
+Listing a model via the API does not mean a new key may call it: `gemini-2.5-pro` is listed
+but returns 404 "no longer available to new users", so it is deliberately not registered
+(a config naming it fails at startup, not mid-job).
 """
 
 from __future__ import annotations
@@ -42,11 +46,11 @@ _MODELS = [
         context_tokens=1_048_576,
         video_input=True,
     ),
-    ModelInfo(
-        name="gemini-2.5-pro",
+    ModelInfo(  # newer generation than 2.5 Flash: used as an independent eval judge
+        name="gemini-3-flash-preview",
         provider="google",
-        requests_per_minute=5,
-        requests_per_day=100,
+        requests_per_minute=5,  # unverified, conservative
+        requests_per_day=20,  # unverified, conservative
         context_tokens=1_048_576,
         video_input=True,
     ),

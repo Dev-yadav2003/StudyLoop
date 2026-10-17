@@ -23,6 +23,7 @@ from lecnotes.domain import VideoMeta
 from lecnotes.llm.gateway import LLMGateway
 from lecnotes.pipeline.registry import VIDEO_STAGE_ORDER
 from lecnotes.pipeline.stages.extract import ExtractedCode, ExtractedUnit, ExtractOutput
+from lecnotes.pipeline.stages.verify import UnitVerdict, VerifyOutput
 
 FIXTURE = Path(__file__).parents[1] / "fixtures" / "perceive_output_sample.json"
 VID = "dQw4w9WgXcQ"
@@ -61,7 +62,16 @@ def scripted_llm() -> FakeLLM:
         segment_ids=["s0002"],
         board_state_ids=["b0002"],
     )
-    return FakeLLM({"extract": ExtractOutput(units=[unit])})
+    verified = UnitVerdict(
+        unit_id=f"{VID}-c001-u01",
+        verdict="supported",
+        revised_explanation="",
+        supported_examples=[],
+        unsupported_claims=[],
+    )
+    return FakeLLM(
+        {"extract": ExtractOutput(units=[unit]), "verify": VerifyOutput(results=[verified])}
+    )
 
 
 def services(settings: Settings, llm: FakeLLM) -> Services:
@@ -100,7 +110,12 @@ async def test_one_link_to_notes_then_cache_then_rerun(settings: Settings) -> No
     # rerun_from=extract recomputes extract and render only.
     svc.runs.runs.clear()
     await svc.pipeline.run(URL, job_id=uuid4(), rerun_from="extract")
-    assert [r.stage for r in svc.runs.runs if not r.cache_hit] == ["resolve", "extract", "render"]
+    assert [r.stage for r in svc.runs.runs if not r.cache_hit] == [
+        "resolve",
+        "extract",
+        "verify",
+        "render",
+    ]
     assert len(llm.calls) == 2 * extract_calls
 
 

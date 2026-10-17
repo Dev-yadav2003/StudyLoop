@@ -1,6 +1,6 @@
 """The pipeline as a whole: resolve once, then the per-video chain.
 
-    resolve → [per video] perceive → validate → align → chunk → extract → render
+    resolve → [per video] perceive → validate → align → chunk → extract → (verify) → render
 
 Playlists produce one notes document per video until the merge stage (Phase 7).
 Construction of concrete adapters lives in `lecnotes.bootstrap` (composition root).
@@ -21,7 +21,8 @@ from lecnotes.pipeline.stages.resolve import ResolveRequest, ResolveStage
 
 log = get_logger(__name__)
 
-VIDEO_STAGE_ORDER = ("perceive", "validate", "align", "chunk", "extract", "render")
+VIDEO_STAGE_ORDER = ("perceive", "validate", "align", "chunk", "extract", "verify", "render")
+OPTIONAL_STAGES = frozenset({"verify"})  # feature-flagged
 
 
 class Pipeline:
@@ -32,8 +33,14 @@ class Pipeline:
         video_stages: Sequence[AnyStage],
     ) -> None:
         names = tuple(s.name for s in video_stages)
-        if names != VIDEO_STAGE_ORDER:
-            raise ValueError(f"video stages must be {VIDEO_STAGE_ORDER}, got {names}")
+        allowed = {
+            VIDEO_STAGE_ORDER,
+            tuple(n for n in VIDEO_STAGE_ORDER if n not in OPTIONAL_STAGES),
+        }
+        if names not in allowed:
+            raise ValueError(
+                f"video stages must be {VIDEO_STAGE_ORDER} (verify optional), got {names}"
+            )
         check_chain(video_stages, video_stages[0].input_model)
         if video_stages[-1].output_model is not NotesDocument:
             raise TypeError("the last video stage must produce a NotesDocument")

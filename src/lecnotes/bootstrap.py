@@ -28,6 +28,7 @@ from lecnotes.pipeline.stages.perceive import PerceiveStage
 from lecnotes.pipeline.stages.render import RenderStage
 from lecnotes.pipeline.stages.resolve import ResolveStage
 from lecnotes.pipeline.stages.validate import ValidateStage
+from lecnotes.pipeline.stages.verify import VerifyStage
 from lecnotes.ports.cache import StageCache
 from lecnotes.ports.metrics import StageRunSink
 from lecnotes.ports.perception import Perceiver
@@ -44,7 +45,7 @@ class Services:
 
 
 def video_stages(settings: Settings, perceiver: Perceiver, gateway: LLMGateway) -> list[AnyStage]:
-    return [
+    stages: list[AnyStage] = [
         PerceiveStage(perceiver),
         ValidateStage(),
         AlignStage(),
@@ -52,8 +53,14 @@ def video_stages(settings: Settings, perceiver: Perceiver, gateway: LLMGateway) 
         ExtractStage(
             gateway, model=settings.text_model, prompt_version=settings.extract_prompt_version
         ),
-        RenderStage(),
     ]
+    if settings.features.verify:
+        stages.append(
+            VerifyStage(
+                gateway, model=settings.text_model, prompt_version=settings.verify_prompt_version
+            )
+        )
+    return [*stages, RenderStage()]
 
 
 def assemble(

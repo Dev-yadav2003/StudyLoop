@@ -78,6 +78,7 @@ class Settings(BaseSettings):
 
     # --- extraction ---
     extract_prompt_version: int = Field(default=1, ge=1)
+    verify_prompt_version: int = Field(default=1, ge=1)
 
     # --- chunking (seconds) ---
     chunk_min_s: int = Field(default=120, gt=0)

@@ -23,6 +23,7 @@ from lecnotes.domain import (
     Evidence,
     ExtractedUnits,
     KnowledgeUnit,
+    PerceptionResult,
     TranscriptSegment,
     VideoSpan,
 )
@@ -76,7 +77,7 @@ def appears_on(text: str, boards: list[BoardState]) -> bool:
 
 class ExtractStage(Stage[Chunks, ExtractedUnits]):
     name = "extract"
-    version = 1
+    version = 2  # v2: output carries the evidence (for verify)
     input_model = Chunks
     output_model = ExtractedUnits
 
@@ -122,7 +123,20 @@ class ExtractStage(Stage[Chunks, ExtractedUnits]):
                 if unit is not None:
                     units.append(unit)
         log.info("extract.done", units=len(units), dropped=len(dropped), chunks=len(inp.chunks))
-        return ExtractedUnits(units=units, dropped=dropped)
+        return ExtractedUnits(
+            units=units, dropped=dropped, evidence=chunk_evidence(video.video_id, inp.chunks)
+        )
+
+
+def chunk_evidence(video_id: str, chunks: list[AlignedChunk]) -> PerceptionResult:
+    """Union of the chunks' evidence (boards may be shared by several chunks)."""
+    segments = {s.id: s for c in chunks for s in c.segments}
+    boards = {b.id: b for c in chunks for b in c.board_states}
+    return PerceptionResult(
+        video_id=video_id,
+        segments=sorted(segments.values(), key=lambda s: s.start_s),
+        board_states=sorted(boards.values(), key=lambda b: b.t_first_seen),
+    )
 
 
 def to_unit(
