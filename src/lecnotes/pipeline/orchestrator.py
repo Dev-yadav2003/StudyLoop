@@ -91,7 +91,7 @@ class Orchestrator:
                 if cached is not None:
                     out = stage.output_model.model_validate(cached)
                     span.update(metadata={"cache_hit": True})
-                    await self._record(stage, ctx, span, started_at, t0, cache_hit=True)
+                    await self._record(stage, ctx, span, key, started_at, t0, cache_hit=True)
                     log.info("stage.cache_hit")
                     return out
 
@@ -104,13 +104,13 @@ class Orchestrator:
                         f"declared {stage.output_model.__name__}"
                     )
             except Exception as exc:
-                await self._record(stage, ctx, span, started_at, t0, error=exc)
+                await self._record(stage, ctx, span, key, started_at, t0, error=exc)
                 log.warning("stage.failed", error_type=type(exc).__name__, error=str(exc))
                 raise StageFailed(stage.name, exc) from exc
 
             if stage.cacheable:
                 await self._cache.put(key, out.model_dump(mode="json"))
-            await self._record(stage, ctx, span, started_at, t0)
+            await self._record(stage, ctx, span, key, started_at, t0)
             log.info("stage.done")
             return out
 
@@ -131,6 +131,7 @@ class Orchestrator:
         stage: AnyStage,
         ctx: RunContext,
         span: Span,
+        key: StageKey,
         started_at: datetime,
         t0: float,
         *,
@@ -153,6 +154,7 @@ class Orchestrator:
             cost_usd=totals.cost_usd,
             error_type=type(error).__name__ if error else None,
             trace_id=span.trace_id,
+            cache_key=key.digest,
             started_at=started_at,
         )
         span.update(

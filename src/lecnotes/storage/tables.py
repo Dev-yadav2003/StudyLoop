@@ -143,6 +143,7 @@ class StageRunRow(Base):
     cost_usd: Mapped[Decimal] = mapped_column(Numeric(12, 6))
     error_type: Mapped[str | None]
     trace_id: Mapped[str | None]
+    cache_key: Mapped[str | None]
     started_at: Mapped[datetime]
 
     __table_args__ = (

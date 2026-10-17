@@ -1,6 +1,9 @@
+import json
 from decimal import Decimal
 
+import httpx
 import pytest
+import respx
 from google.genai.types import MediaResolution
 from langchain_core.exceptions import (
     ContextOverflowError,
@@ -28,7 +31,7 @@ from lecnotes.observability.tracing import traced_stage
 from lecnotes.prompts.loader import PromptSpec, RenderedPrompt
 from tests.support import SpanRecorder
 
-FLASH, LITE, PRO = "gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-3-flash-preview"
+FLASH, LITE, PRO = "gemini-2.5-flash", "gemini-3.1-flash-lite", "gemini-3-flash-preview"
 
 
 class Answer(BaseModel):
@@ -241,3 +244,41 @@ async def test_unknown_call_time_model_rejected_before_any_request() -> None:
     with pytest.raises(UnknownModel):
         await make_gateway(fake).generate_structured(make_prompt(), Answer, model="gemini-typo")
     assert fake.calls == []
+
+
+@respx.mock
+async def test_thinking_level_reaches_the_request(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Wire-level, like media_resolution: a setting LangChain accepts may never be sent."""
+    monkeypatch.setitem(Settings.model_config, "env_file", None)
+    secret = SecretStr("k")
+    settings = Settings(
+        gemini_api_key=secret,
+        youtube_api_key=secret,
+        database_url=secret,
+        langfuse_public_key=secret,
+        langfuse_secret_key=secret,
+        llm_rpm_override=60_000,
+    )
+    route = respx.post(url__regex=r".*:generateContent.*").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "candidates": [
+                    {
+                        "content": {"role": "model", "parts": [{"text": ANSWER.model_dump_json()}]},
+                        "finishReason": "STOP",
+                    }
+                ],
+                "usageMetadata": {"promptTokenCount": 5, "candidatesTokenCount": 5},
+            },
+        )
+    )
+    gateway = LLMGateway(gemini_factory(settings), default_model=PRO, callbacks=list)
+
+    await gateway.generate_structured(
+        make_prompt(), Answer, options=ModelOptions(thinking_level="low")
+    )
+
+    body = json.loads(route.calls.last.request.content)
+    thinking = body["generationConfig"]["thinkingConfig"]
+    assert str(thinking.get("thinkingLevel", thinking.get("thinking_level"))).lower() == "low"

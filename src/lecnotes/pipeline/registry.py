@@ -52,6 +52,13 @@ class Pipeline:
     def stage_names(self) -> list[str]:
         return [self._resolve.name, *(s.name for s in self._stages)]
 
+    def describe(self) -> dict[str, dict[str, object]]:
+        """Version, prompt version and model of every stage — recorded with eval runs."""
+        return {
+            s.name: {"version": s.version, "prompt_version": s.prompt_version, "model": s.model}
+            for s in [self._resolve, *self._stages]
+        }
+
     async def run(
         self,
         url: str,

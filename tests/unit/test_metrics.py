@@ -24,12 +24,12 @@ def test_usage_totals_sums_exactly() -> None:
         [
             usage("gemini-2.5-flash", 1000, 200, "0.0008"),
             usage("gemini-2.5-flash", 3000, 100, "0.00115"),
-            usage("gemini-2.5-flash-lite", 500, 50, "0.00007"),
+            usage("gemini-3.1-flash-lite", 500, 50, "0.00007"),
         ]
     )
     assert (totals.tokens_in, totals.tokens_out) == (4500, 350)
     assert totals.cost_usd == Decimal("0.00202")
-    assert totals.model == "gemini-2.5-flash+gemini-2.5-flash-lite"
+    assert totals.model == "gemini-2.5-flash+gemini-3.1-flash-lite"
 
 
 def test_usage_totals_of_a_stage_without_llm_calls() -> None:

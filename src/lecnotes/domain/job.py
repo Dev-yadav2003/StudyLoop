@@ -70,6 +70,9 @@ class StageRun(DomainModel):
     cost_usd: Decimal = Field(default=Decimal(0), ge=0)
     error_type: str | None = None
     trace_id: str | None = None
+    cache_key: str | None = Field(
+        default=None, description="Stage cache key: equal keys = identical inputs/config/versions"
+    )
     started_at: datetime
 
     @model_validator(mode="after")

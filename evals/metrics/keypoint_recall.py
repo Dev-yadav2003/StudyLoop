@@ -13,7 +13,7 @@ from rapidfuzz import fuzz
 
 from evals.golden_set import Keypoint
 from lecnotes.domain import LLMUsage
-from lecnotes.llm.gateway import LLMGateway
+from lecnotes.llm.gateway import LLMGateway, ModelOptions
 from lecnotes.prompts.loader import load
 
 PROMPT_ID = "judge/keypoint_recall"
@@ -58,9 +58,12 @@ async def keypoint_recall(
     *,
     prompt_version: int = 1,
     model: str | None = None,
+    options: ModelOptions | None = None,
 ) -> KeypointScore:
     prompt = load(PROMPT_ID, version=prompt_version, keypoints=keypoints, notes=notes_markdown)
-    result = await gateway.generate_structured(prompt, KeypointJudgement, model=model)
+    result = await gateway.generate_structured(
+        prompt, KeypointJudgement, model=model, options=options
+    )
 
     verdicts = {v.id: v for v in result.output.verdicts}
     covered, missed, unsupported, ungraded = [], [], [], []

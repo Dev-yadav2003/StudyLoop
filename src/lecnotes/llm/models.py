@@ -4,9 +4,11 @@ Google no longer publishes free-tier RPM/RPD (checked 2026-10-17): they are only
 AI Studio for your key. Values below are conservative and marked unverified — confirm them
 in AI Studio and edit this file, the single source of truth for the rate limiter.
 
-Listing a model via the API does not mean a new key may call it: `gemini-2.5-pro` is listed
-but returns 404 "no longer available to new users", so it is deliberately not registered
-(a config naming it fails at startup, not mid-job).
+Listing a model via the API does not mean a new key may call it: `gemini-2.5-pro` and
+`gemini-2.5-flash-lite` are listed but return 404 "no longer available to new users"
+(probed 2026-10-17), so they are deliberately not registered — a config naming them fails at
+startup, not mid-job. `gemini-3.5-flash-lite` works but ignores `temperature` ("fixed
+sampling defaults"), which breaks reproducibility, so it isn't registered either.
 """
 
 from __future__ import annotations
@@ -38,11 +40,11 @@ _MODELS = [
         context_tokens=1_048_576,
         video_input=True,
     ),
-    ModelInfo(
-        name="gemini-2.5-flash-lite",
+    ModelInfo(  # fallback when the primary is out of quota
+        name="gemini-3.1-flash-lite",
         provider="google",
-        requests_per_minute=15,
-        requests_per_day=1_000,
+        requests_per_minute=10,  # unverified, conservative
+        requests_per_day=100,  # unverified, conservative
         context_tokens=1_048_576,
         video_input=True,
     ),

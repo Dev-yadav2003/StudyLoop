@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from pydantic import BaseModel
 
 from lecnotes.domain import KnowledgeUnit, LLMUsage, PerceptionResult
-from lecnotes.llm.gateway import LLMGateway
+from lecnotes.llm.gateway import LLMGateway, ModelOptions
 from lecnotes.pipeline.stages.verify import cited_evidence  # same evidence selection
 from lecnotes.prompts.loader import load
 
@@ -53,13 +53,16 @@ async def faithfulness(
     model: str | None = None,
     batch_size: int = 6,
     prompt_version: int = 1,
+    options: ModelOptions | None = None,
 ) -> FaithfulnessScore:
     graded: dict[str, UnitClaims] = {}
     usage: list[LLMUsage] = []
     for start in range(0, len(units), batch_size):
         batch = [cited_evidence(u, evidence) for u in units[start : start + batch_size]]
         prompt = load(PROMPT_ID, version=prompt_version, units=batch)
-        result = await gateway.generate_structured(prompt, FaithfulnessJudgement, model=model)
+        result = await gateway.generate_structured(
+            prompt, FaithfulnessJudgement, model=model, options=options
+        )
         usage.append(result.usage)
         graded |= {u.unit_id: u for u in result.output.units}
 

@@ -58,6 +58,9 @@ class ModelOptions:
     media_resolution: Literal["low", "medium", "high"] | None = None
     max_output_tokens: int | None = None
     thinking_budget: int | None = None
+    """Gemini 2.5 thinking control (tokens)."""
+    thinking_level: Literal["minimal", "low", "medium", "high"] | None = None
+    """Gemini 3+ thinking control; replaces thinking_budget there."""
     timeout_s: float | None = None
 
 
@@ -149,6 +152,7 @@ def gemini_factory(settings: Settings) -> ModelFactory:
             media_resolution=_MEDIA_RESOLUTION[resolution] if resolution else None,
             max_tokens=options.max_output_tokens,
             thinking_budget=options.thinking_budget,
+            thinking_level=options.thinking_level,
         )
 
     return build

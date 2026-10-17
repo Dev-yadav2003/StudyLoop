@@ -69,7 +69,7 @@ def render_markdown(video: VideoMeta, units: list[KnowledgeUnit]) -> str:
 
 class RenderStage(Stage[ExtractedUnits, NotesDocument]):
     name = "render"
-    version = 1
+    version = 2  # v2: document carries evidence + verify summary
     input_model = ExtractedUnits
     output_model = NotesDocument
 
@@ -80,4 +80,6 @@ class RenderStage(Stage[ExtractedUnits, NotesDocument]):
             videos=[video],
             units=inp.units,
             markdown=render_markdown(video, inp.units),
+            evidence=inp.evidence,
+            verify=inp.verify,
         )

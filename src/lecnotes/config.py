@@ -63,7 +63,7 @@ class Settings(BaseSettings):
     # --- models ---
     perceive_model: str = "gemini-2.5-flash"
     text_model: str = "gemini-2.5-flash"
-    fallback_model: str = "gemini-2.5-flash-lite"
+    fallback_model: str = "gemini-3.1-flash-lite"
     llm_rpm_override: float | None = Field(
         default=None, gt=0, description="None = use the model registry's free-tier RPM"
     )

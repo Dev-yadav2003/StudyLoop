@@ -10,9 +10,9 @@ from lecnotes.llm.pricing import PRICES, cost_usd
 def test_known_token_counts() -> None:
     # 10k in @ $0.30/M = $0.003 ; 2k out @ $2.50/M = $0.005
     assert cost_usd("gemini-2.5-flash", tokens_in=10_000, tokens_out=2_000) == Decimal("0.008")
-    # 1M in @ $0.10 + 1M out @ $0.40
-    lite = cost_usd("gemini-2.5-flash-lite", tokens_in=1_000_000, tokens_out=1_000_000)
-    assert lite == Decimal("0.50")
+    # 1M in @ $0.25 + 1M out @ $1.50
+    lite = cost_usd("gemini-3.1-flash-lite", tokens_in=1_000_000, tokens_out=1_000_000)
+    assert lite == Decimal("1.75")
 
 
 def test_zero_tokens_cost_nothing() -> None:

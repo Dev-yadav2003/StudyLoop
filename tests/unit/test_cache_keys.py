@@ -67,7 +67,7 @@ def test_unrelated_config_change_hits(settings: Settings) -> None:
 
 def test_model_input_and_video_change_miss(settings: Settings) -> None:
     base = key(settings).digest
-    assert key(settings, model="gemini-2.5-flash-lite").digest != base
+    assert key(settings, model="gemini-3.1-flash-lite").digest != base
     assert key(settings, input={"video_id": "other"}).digest != base
     assert key(settings, video_id="aaaaaaaaaaa").digest != base
 
