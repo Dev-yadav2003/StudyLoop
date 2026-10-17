@@ -1,4 +1,5 @@
 from datetime import datetime
+from decimal import Decimal
 from enum import StrEnum
 from typing import Self
 from uuid import UUID
@@ -66,7 +67,7 @@ class StageRun(DomainModel):
     latency_ms: float = Field(ge=0)
     tokens_in: int = Field(default=0, ge=0)
     tokens_out: int = Field(default=0, ge=0)
-    cost_usd: float = Field(default=0, ge=0)
+    cost_usd: Decimal = Field(default=Decimal(0), ge=0)
     error_type: str | None = None
     trace_id: str | None = None
     started_at: datetime

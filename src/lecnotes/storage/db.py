@@ -20,13 +20,18 @@ def normalize_url(url: str) -> str:
     raise ValueError("DATABASE_URL must be a postgres:// or postgresql:// URL")
 
 
-def create_engine(url: str, *, pool_size: int = 3) -> AsyncEngine:
+def create_engine(url: str, *, pool_size: int = 3, connect_timeout_s: int = 10) -> AsyncEngine:
     return _create_async_engine(
         normalize_url(url),
         pool_size=pool_size,
         max_overflow=2,
         pool_pre_ping=True,  # free Supabase drops idle connections
-        connect_args={"prepare_threshold": None},
+        connect_args={
+            "prepare_threshold": None,
+            # Without it an unreachable DB blocks for minutes (seen: 130 s on Windows) — and
+            # would stall a job just to write a metrics row.
+            "connect_timeout": connect_timeout_s,
+        },
     )
 
 
