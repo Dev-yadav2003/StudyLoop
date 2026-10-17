@@ -1,0 +1,358 @@
+{
+  "video_id": "Ek49cGiAOwo",
+  "segments": [
+    {
+      "id": "s0001",
+      "start_s": 0.0,
+      "end_s": 8.0,
+      "text": "Hi and welcome back to the channel. Now a lot of the videos on this channel do with kind of more complex natural language processing or machine learning types things in Python.",
+      "source": "gemini"
+    },
+    {
+      "id": "s0002",
+      "start_s": 8.0,
+      "end_s": 26.0,
+      "text": "But I thought in this video I would take a step back and talk about something that might be a little bit more uh relatable or accessible to newer Python programmers and kind of some best practices and how you can structure your code and also maybe some really useful uh methods or functions that you can use that are built into Python already.",
+      "source": "gemini"
+    },
+    {
+      "id": "s0003",
+      "start_s": 26.0,
+      "end_s": 33.0,
+      "text": "And we're going to be specifically talking about zip and enumerate, when to use them, why how to use them and specifically why.",
+      "source": "gemini"
+    },
+    {
+      "id": "s0004",
+      "start_s": 33.0,
+      "end_s": 38.0,
+      "text": "So we have two lists as we can see right here.",
+      "source": "gemini"
+    },
+    {
+      "id": "s0005",
+      "start_s": 38.0,
+      "end_s": 52.0,
+      "text": "Now, we have names and ages, so if I were to iterate over each of these, I could say for name and names, print name, and then I could do maybe something like for age and ages, print age, and I'm going to get those, they're iterating over two separate times.",
+      "source": "gemini"
+    },
+    {
+      "id": "s0006",
+      "start_s": 52.0,
+      "end_s": 59.0,
+      "text": "Now, some of you all might be thinking that's I want to see these kind of match together in some capacity.",
+      "source": "gemini"
+    },
+    {
+      "id": "s0007",
+      "start_s": 59.0,
+      "end_s": 80.0,
+      "text": "So we could do something and again, this might be this will work, but it might not be the best way to do it, um I could say for name and names, and then I can make a little I outside of here is equal to zero, and I can say print name, and then I can say something like I is equal to I plus one, so take that I up each time.",
+      "source": "gemini"
+    },
+    {
+      "id": "s0008",
+      "start_s": 80.0,
+      "end_s": 86.0,
+      "text": "And let's go ahead and print off I as well, and you see that we've got uh zero, one and two.",
+      "source": "gemini"
+    },
+    {
+      "id": "s0009",
+      "start_s": 86.0,
+      "end_s": 92.0,
+      "text": "So with that variable, I could do something like ages and grab those at the same time.",
+      "source": "gemini"
+    },
+    {
+      "id": "s0010",
+      "start_s": 92.0,
+      "end_s": 102.0,
+      "text": "Now this works, this this is fine, and a lot of the videos on this channel, I typically do something like this because it's really kind of easier to read for for newer programmers, which is a lot of my audience.",
+      "source": "gemini"
+    },
+    {
+      "id": "s0011",
+      "start_s": 102.0,
+      "end_s": 110.0,
+      "text": "But I thought I'd introduce something that I use in my workflow that most people do, who uh program on a regular basis, and these are the zip and enumerate functions.",
+      "source": "gemini"
+    },
+    {
+      "id": "s0012",
+      "start_s": 110.0,
+      "end_s": 116.0,
+      "text": "So we can do this exact same thing that looks a little cleaner, looks a little bit more polished, looks a little bit more professional.",
+      "source": "gemini"
+    },
+    {
+      "id": "s0013",
+      "start_s": 116.0,
+      "end_s": 124.0,
+      "text": "So I can say for name, age, comma, and each of these, in zip.",
+      "source": "gemini"
+    },
+    {
+      "id": "s0014",
+      "start_s": 124.0,
+      "end_s": 134.0,
+      "text": "Now, what zip does, it's a function that will bring together two separate data sets, or two separate lists essentially, and allows for you to iterate over them simultaneously.",
+      "source": "gemini"
+    },
+    {
+      "id": "s0015",
+      "start_s": 134.0,
+      "end_s": 144.0,
+      "text": "So I can say names and ages separated out by a comma, and now I can print off name and age, and I get the exact same right.",
+      "source": "gemini"
+    },
+    {
+      "id": "s0016",
+      "start_s": 144.0,
+      "end_s": 154.0,
+      "text": "Now, why is this a better way to do it, it's not better from a point of view of just making it work better, it's going to work the exact same way as what we did in the cell above.",
+      "source": "gemini"
+    },
+    {
+      "id": "s0017",
+      "start_s": 154.0,
+      "end_s": 165.0,
+      "text": "However, it is a tighter way to do your code and it looks more polished, and it lets you leverage what's already built into Python, which is the zip function.",
+      "source": "gemini"
+    },
+    {
+      "id": "s0018",
+      "start_s": 165.0,
+      "end_s": 173.0,
+      "text": "Now, another thing that we saw was that I was also grabbing the I as a as a way of ticking up inside of a loop.",
+      "source": "gemini"
+    },
+    {
+      "id": "s0019",
+      "start_s": 173.0,
+      "end_s": 184.0,
+      "text": "So let's say I also needed to go ahead and do that, I needed to have an I that would iterate each time, so I could do what I did where I had an I outside and I ticked up each time.",
+      "source": "gemini"
+    },
+    {
+      "id": "s0020",
+      "start_s": 184.0,
+      "end_s": 192.0,
+      "text": "That's easier to read if you're if you're new to Python, that's why I typically will do that on this channel, but there's a better, probably more professional or polished way to do that, and that's with enumerate.",
+      "source": "gemini"
+    },
+    {
+      "id": "s0021",
+      "start_s": 192.0,
+      "end_s": 196.0,
+      "text": "So I can say for name and names and print off name.",
+      "source": "gemini"
+    },
+    {
+      "id": "s0022",
+      "start_s": 196.0,
+      "end_s": 204.0,
+      "text": "But if I needed to actually have that integer, I can wrap names inside of the enumerate function.",
+      "source": "gemini"
+    },
+    {
+      "id": "s0023",
+      "start_s": 204.0,
+      "end_s": 209.0,
+      "text": "Now let's take a look at what's going to happen if I do this, I'll get an error.",
+      "source": "gemini"
+    },
+    {
+      "id": "s0024",
+      "start_s": 209.0,
+      "end_s": 234.0,
+      "text": "Or it'll actually print off automatically, uh one of the things I need to do though is I want these pieces of information to be separated out, and to separate them out, I'd like to actually be able to grab this first uh this first index in that list, so I could do something like I is equal to um name zero, and I could do something like name is equal to name uh one, and then I can print that off and it looks like it's going to work just fine, but this is a little clunky.",
+      "source": "gemini"
+    },
+    {
+      "id": "s0025",
+      "start_s": 234.0,
+      "end_s": 263.0,
+      "text": "A better way to actually do this is to create two separate things or two separate variables that are being created in the loop by separating out the I and the name originally, remember, what enumerate is doing for us as you just saw is it's creating a list every time we iterate over something, so we're getting both an integer, so the number that's being iterated up each time and also the actual object that we're iterating over, so the the name in the names list.",
+      "source": "gemini"
+    },
+    {
+      "id": "s0026",
+      "start_s": 263.0,
+      "end_s": 275.0,
+      "text": "And if I were to do it this way, I get the exact same result, again, not necessarily better from a it's doing it better or it's it's producing a better result, the results are the exact same, but this looks a little bit more polished, a little cleaner.",
+      "source": "gemini"
+    },
+    {
+      "id": "s0027",
+      "start_s": 275.0,
+      "end_s": 279.0,
+      "text": "And again, it's letting you take advantage of something that is built into Python.",
+      "source": "gemini"
+    },
+    {
+      "id": "s0028",
+      "start_s": 279.0,
+      "end_s": 309.0,
+      "text": "So if you're new to Python, this might be something that might look a little scary if you encounter it in someone's code without having any idea about what it actually is, but this video hopefully gives you a sense of what uh the zip function looks like and the enumerate functions look like, how to go about using them, when to use them, and I encourage you to spend a little bit of time and maybe using them in your workflow, if you're moving from that beginner Python coder to maybe that intermediate level, this is these are the kind of subtle things that'll set your code apart, it'll make it look better and make it look a little bit more polished.",
+      "source": "gemini"
+    },
+    {
+      "id": "s0029",
+      "start_s": 309.0,
+      "end_s": 315.0,
+      "text": "Again, these are optional things though, they work the exact same way as the things that we saw above, they just looks a little bit better.",
+      "source": "gemini"
+    },
+    {
+      "id": "s0030",
+      "start_s": 315.0,
+      "end_s": 323.0,
+      "text": "That's going to be it for this video, hopefully you found these two little tips and tricks useful and hopefully you'll start using them in your own workflow.",
+      "source": "gemini"
+    },
+    {
+      "id": "s0031",
+      "start_s": 323.0,
+      "end_s": 335.0,
+      "text": "Um that's going to be all for this video though, thank you for listening, if you like this video, like and subscribe down below, if you want to get um more content like this, do let me know, I can give do start doing weekly videos that are tips and tricks, little things like this.",
+      "source": "gemini"
+    },
+    {
+      "id": "s0032",
+      "start_s": 335.0,
+      "end_s": 346.0,
+      "text": "Let me know in the comments, uh as always, thanks to all the members and Patreon supporters on this channel, if you get a lot out of this channel, please do consider it supporting it via one of these platforms, both of which are linked in the description down below.",
+      "source": "gemini"
+    },
+    {
+      "id": "s0033",
+      "start_s": 346.0,
+      "end_s": 347.0,
+      "text": "Thank you.",
+      "source": "gemini"
+    }
+  ],
+  "board_states": [
+    {
+      "id": "b0001",
+      "t_first_seen": 0.0,
+      "t_last_seen": 38.0,
+      "type": "code",
+      "text": "names = [\"tom\", \"jerry\", \"alice\"]\nages = [20, 25, 30]",
+      "description": ""
+    },
+    {
+      "id": "b0002",
+      "t_first_seen": 38.0,
+      "t_last_seen": 49.0,
+      "type": "code",
+      "text": "names = [\"tom\", \"jerry\", \"alice\"]\nages = [20, 25, 30]\n\nfor name in names:\n    print(name)\nfor age in ages:\n    print(age)",
+      "description": ""
+    },
+    {
+      "id": "b0003",
+      "t_first_seen": 49.0,
+      "t_last_seen": 60.0,
+      "type": "code",
+      "text": "names = [\"tom\", \"jerry\", \"alice\"]\nages = [20, 25, 30]\n\nfor name in names:\n    print(name)\nfor age in ages:\n    print(age)\ntom\njerry\nalice\n20\n25\n30",
+      "description": ""
+    },
+    {
+      "id": "b0004",
+      "t_first_seen": 60.0,
+      "t_last_seen": 81.0,
+      "type": "code",
+      "text": "i = 0\nfor name in names:\n    print(name)\n    i = i + 1",
+      "description": ""
+    },
+    {
+      "id": "b0005",
+      "t_first_seen": 81.0,
+      "t_last_seen": 87.0,
+      "type": "code",
+      "text": "i = 0\nfor name in names:\n    print(name)\n    i = i + 1\ntom\njerry\nalice",
+      "description": ""
+    },
+    {
+      "id": "b0006",
+      "t_first_seen": 87.0,
+      "t_last_seen": 90.0,
+      "type": "code",
+      "text": "i = 0\nfor name in names:\n    print(name, i)\n    i = i + 1",
+      "description": ""
+    },
+    {
+      "id": "b0007",
+      "t_first_seen": 90.0,
+      "t_last_seen": 92.0,
+      "type": "code",
+      "text": "i = 0\nfor name in names:\n    print(name, i)\n    i = i + 1\ntom 0\njerry 1\nalice 2",
+      "description": ""
+    },
+    {
+      "id": "b0008",
+      "t_first_seen": 92.0,
+      "t_last_seen": 111.0,
+      "type": "code",
+      "text": "i = 0\nfor name in names:\n    print(name, ages[i])\n    i = i + 1\ntom 20\njerry 25\nalice 30",
+      "description": ""
+    },
+    {
+      "id": "b0009",
+      "t_first_seen": 111.0,
+      "t_last_seen": 142.0,
+      "type": "code",
+      "text": "for name, age in zip(names, ages):\n    print(name, age)",
+      "description": ""
+    },
+    {
+      "id": "b0010",
+      "t_first_seen": 142.0,
+      "t_last_seen": 176.0,
+      "type": "code",
+      "text": "for name, age in zip(names, ages):\n    print(name, age)\ntom 20\njerry 25\nalice 30",
+      "description": ""
+    },
+    {
+      "id": "b0011",
+      "t_first_seen": 176.0,
+      "t_last_seen": 196.0,
+      "type": "code",
+      "text": "for name in enumerate(names):\n    print(name)",
+      "description": ""
+    },
+    {
+      "id": "b0012",
+      "t_first_seen": 196.0,
+      "t_last_seen": 205.0,
+      "type": "code",
+      "text": "for name in enumerate(names):\n    print(name)\n(0, 'tom')\n(1, 'jerry')\n(2, 'alice')",
+      "description": ""
+    },
+    {
+      "id": "b0013",
+      "t_first_seen": 205.0,
+      "t_last_seen": 235.0,
+      "type": "code",
+      "text": "for name in enumerate(names):\n    i = name[0]\n    name = name[1]\n    print(name, i)\ntom 0\njerry 1\nalice 2",
+      "description": ""
+    },
+    {
+      "id": "b0014",
+      "t_first_seen": 235.0,
+      "t_last_seen": 263.0,
+      "type": "code",
+      "text": "for i, name in enumerate(names):\n    print(name, i)",
+      "description": ""
+    },
+    {
+      "id": "b0015",
+      "t_first_seen": 263.0,
+      "t_last_seen": 347.0,
+      "type": "code",
+      "text": "for i, name in enumerate(names):\n    print(name, i)\ntom 0\njerry 1\nalice 2",
+      "description": ""
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "fingerprint": {
+    "adapter": "gemini_url",
+    "prompt_id": "perceive",
+    "prompt_version": 1,
+    "model": "gemini-2.5-flash",
+    "fps": 1.0,
+    "media_resolution": "low",
+    "max_output_tokens": 65536
+  },
+  "duration_s": 347.0,
+  "usage": [
+    {
+      "prompt_id": "perceive",
+      "prompt_version": 1,
+      "model": "gemini-2.5-flash",
+      "tokens_in": 36209,
+      "tokens_out": 5686,
+      "cost_usd": "0.0250777",
+      "latency_ms": 59615.29390000214
+    }
+  ],
+  "dropped": [],
+  "repaired": [],
+  "source": "copied from Supabase stage_cache after the first real CLI run (2026-10-17)"
+}
