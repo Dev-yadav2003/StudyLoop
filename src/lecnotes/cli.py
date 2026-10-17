@@ -1,4 +1,5 @@
-"""Developer CLI: run the full pipeline on one link, locally, against real services.
+"""Developer CLI: run the full pipeline on one link, locally, against real services — or
+`serve` the HTTP API with its job runner (http://127.0.0.1:8000/docs).
 
     uv run python -m lecnotes.cli run <youtube-url> [--preset stem] [--out notes/]
                                       [--rerun-from extract] [--no-db]
@@ -40,7 +41,22 @@ def _parser() -> argparse.ArgumentParser:
     run.add_argument("--rerun-from", choices=VIDEO_STAGE_ORDER)
     run.add_argument("--no-db", action="store_true", help="in-memory cache and metrics")
     run.add_argument("--no-trace", action="store_true", help="don't send traces to Langfuse")
+    serve = sub.add_parser("serve", help="run the HTTP API (+ job runner) locally")
+    serve.add_argument("--host", default="127.0.0.1")
+    serve.add_argument("--port", type=int, default=8000)
     return parser
+
+
+def serve(host: str, port: int) -> int:
+    """uvicorn on our event loop (`loop="none"`): on Windows that's a SelectorEventLoop, which
+    psycopg's async mode needs. Logging/tracing are set up by the app's lifespan."""
+    import uvicorn
+
+    config = uvicorn.Config(
+        "apps.api.main:app", host=host, port=port, loop="none", log_config=None, lifespan="on"
+    )
+    run_async(uvicorn.Server(config).serve())
+    return 0
 
 
 def format_runs(runs: Sequence[StageRun]) -> str:
@@ -96,6 +112,8 @@ def main(
     except ConfigError as exc:
         print(f"{exc}\n\nCopy .env.example to .env and fill it in.", file=sys.stderr)
         return 2
+    if args.command == "serve":
+        return serve(args.host, args.port)
     configure_logging(settings.log_level, json=False)
     if not args.no_trace and services is None:
         init_tracing_from_settings(settings)

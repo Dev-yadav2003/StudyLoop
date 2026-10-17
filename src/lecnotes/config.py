@@ -87,6 +87,16 @@ class Settings(BaseSettings):
 
     features: FeatureFlags = FeatureFlags()
 
+    # --- API + worker ---
+    admin_token: SecretStr | None = Field(
+        default=None, description="Bearer token for /v1/admin/*; unset = admin API disabled"
+    )
+    cors_origins: list[str] = ["http://localhost:3000"]
+    run_worker: bool = Field(default=True, description="Run the job runner inside the API")
+    worker_poll_s: float = Field(default=2.0, gt=0)
+    job_lease_s: float = Field(default=120.0, gt=0)
+    job_max_attempts: int = Field(default=3, ge=1)
+
     @field_validator(
         "gemini_api_key",
         "youtube_api_key",

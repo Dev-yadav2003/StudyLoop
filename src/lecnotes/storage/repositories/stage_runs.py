@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import uuid
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -78,3 +79,21 @@ async def latency_percentiles(
         )
         for r in rows
     ]
+
+
+async def runs_for_job(engine: AsyncEngine, job_id: uuid.UUID) -> list[StageRun]:
+    """Every StageRun of a job, oldest first (a rerun appends newer rows)."""
+    stmt = select(StageRunRow).where(StageRunRow.job_id == job_id).order_by(StageRunRow.id)
+    async with engine.connect() as conn:
+        rows = (await conn.execute(stmt)).all()
+    return [
+        StageRun.model_validate({c: getattr(r, c) for c in StageRun.model_fields if hasattr(r, c)})
+        for r in rows
+    ]
+
+
+def latest_per_stage(runs: list[StageRun]) -> dict[str, StageRun]:
+    latest: dict[str, StageRun] = {}
+    for run in runs:  # oldest first, so later runs overwrite
+        latest[run.stage] = run
+    return latest
