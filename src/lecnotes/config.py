@@ -64,7 +64,11 @@ class Settings(BaseSettings):
     perceive_model: str = "gemini-2.5-flash"
     text_model: str = "gemini-2.5-flash"
     fallback_model: str = "gemini-2.5-flash-lite"
-    llm_requests_per_minute: float = Field(default=10, gt=0)
+    llm_rpm_override: float | None = Field(
+        default=None, gt=0, description="None = use the model registry's free-tier RPM"
+    )
+    llm_retry_attempts: int = Field(default=3, ge=1, le=10)
+    llm_timeout_s: float = Field(default=180, gt=0)
 
     # --- perception ---
     perceive_fps: float = Field(default=1.0, gt=0, le=24)

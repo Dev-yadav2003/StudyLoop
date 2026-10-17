@@ -19,9 +19,24 @@ RULES: dict[str, tuple[set[str], set[str] | None]] = {
     "prompts": ({"lecnotes.prompts"}, {"pydantic", "jinja2", "yaml", "langchain_core"}),
     "observability": (
         {"lecnotes", "lecnotes.config", "lecnotes.observability"},
-        {"structlog", "langfuse"},
+        # langchain_core only for the Langfuse<->LangChain callback bridge.
+        {"structlog", "langfuse", "langchain_core"},
+    ),
+    "llm": (
+        {
+            "lecnotes.config",
+            "lecnotes.errors",
+            "lecnotes.llm",
+            "lecnotes.observability",
+            "lecnotes.prompts",
+        },
+        {"pydantic", "langchain_core", "langchain_google_genai"},
     ),
 }
+
+# Plan §4.3: no LLM call outside the gateway (or the perception adapter, Phase 3).
+LLM_SDKS = {"langchain_google_genai", "google.genai", "google.generativeai"}
+LLM_SDK_ALLOWED = {"llm/gateway.py", "adapters/perception/gemini_url.py"}
 
 
 def imports_of(path: Path) -> set[str]:
@@ -55,3 +70,15 @@ def violations(layer: str) -> list[str]:
 @pytest.mark.parametrize("layer", sorted(RULES))
 def test_layer_dependencies(layer: str) -> None:
     assert violations(layer) == []
+
+
+def test_llm_sdks_only_imported_by_gateway() -> None:
+    offenders = []
+    for path in sorted(SRC.rglob("*.py")):
+        rel = path.relative_to(SRC).as_posix()
+        if rel in LLM_SDK_ALLOWED:
+            continue
+        for mod in imports_of(path):
+            if any(mod == sdk or mod.startswith(sdk + ".") for sdk in LLM_SDKS):
+                offenders.append(f"{rel} imports {mod}")
+    assert offenders == []

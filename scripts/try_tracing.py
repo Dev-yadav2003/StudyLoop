@@ -12,7 +12,7 @@ import uuid
 from lecnotes.config import get_settings
 from lecnotes.observability.logging import configure_logging, get_logger
 from lecnotes.observability.tracing import (
-    init_tracing,
+    init_tracing_from_settings,
     shutdown_tracing,
     traced_job,
     traced_stage,
@@ -23,7 +23,7 @@ def main() -> None:
     settings = get_settings()
     configure_logging(settings.log_level)
     log = get_logger(__name__)
-    client = init_tracing(settings)
+    client = init_tracing_from_settings(settings)
 
     if not client.auth_check():
         raise SystemExit("Langfuse auth failed: check LANGFUSE_PUBLIC_KEY / SECRET_KEY / BASE_URL")

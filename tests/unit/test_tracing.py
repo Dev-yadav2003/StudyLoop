@@ -3,54 +3,28 @@
 import io
 import json
 import logging
-import uuid
-from collections.abc import Iterator
 
 import pytest
 import structlog
-from langfuse import Langfuse
-from opentelemetry.sdk.trace import ReadableSpan, TracerProvider
-from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
 from lecnotes.observability import tracing
 from lecnotes.observability.logging import configure_logging, get_logger
 from lecnotes.observability.tracing import (
     TracingNotInitialized,
-    init_tracing,
     traced_job,
     traced_stage,
 )
+from tests.support import SpanRecorder
 
 
-@pytest.fixture
-def exporter() -> Iterator[InMemorySpanExporter]:
-    exp = InMemorySpanExporter()
-    client = Langfuse(
-        # Langfuse keeps one resource manager per public key; unique key = isolated test.
-        public_key=f"pk-test-{uuid.uuid4()}",
-        secret_key="sk-test",
-        base_url="http://localhost:9",
-        tracer_provider=TracerProvider(),
-        span_exporter=exp,
-    )
-    init_tracing(client=client)
-    yield exp
-    tracing.shutdown_tracing()
-
-
-def finished(exp: InMemorySpanExporter) -> dict[str, ReadableSpan]:
-    tracing.get_langfuse().flush()
-    return {span.name: span for span in exp.get_finished_spans()}
-
-
-def test_stage_spans_nest_under_job(exporter: InMemorySpanExporter) -> None:
+def test_stage_spans_nest_under_job(span_recorder: SpanRecorder) -> None:
     with traced_job("job-1", video_id="vid-1"):
         with traced_stage("resolve", version=1):
             pass
         with traced_stage("perceive", version=2, prompt_version=3):
             pass
 
-    spans = finished(exporter)
+    spans = span_recorder.by_name()
     job, resolve, perceive = spans["job"], spans["stage:resolve"], spans["stage:perceive"]
 
     assert job.parent is None
@@ -69,7 +43,7 @@ def test_stage_spans_nest_under_job(exporter: InMemorySpanExporter) -> None:
     assert attrs["session.id"] == "job-1"
 
 
-def test_stage_error_is_recorded_and_reraised(exporter: InMemorySpanExporter) -> None:
+def test_stage_error_is_recorded_and_reraised(span_recorder: SpanRecorder) -> None:
     with (
         pytest.raises(ValueError, match="bad"),
         traced_job("job-2"),
@@ -77,12 +51,12 @@ def test_stage_error_is_recorded_and_reraised(exporter: InMemorySpanExporter) ->
     ):
         raise ValueError("bad")
 
-    attrs = finished(exporter)["stage:extract"].attributes or {}
+    attrs = span_recorder.by_name()["stage:extract"].attributes or {}
     assert attrs["langfuse.observation.level"] == "ERROR"
     assert attrs["langfuse.observation.status_message"] == "ValueError: bad"
 
 
-@pytest.mark.usefixtures("exporter")
+@pytest.mark.usefixtures("span_recorder")
 def test_log_lines_carry_trace_and_stage() -> None:
     buf = io.StringIO()
     configure_logging(stream=buf)

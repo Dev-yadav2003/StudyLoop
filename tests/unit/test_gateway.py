@@ -1,0 +1,205 @@
+from decimal import Decimal
+
+import pytest
+from langchain_core.exceptions import (
+    ContextOverflowError,
+    ModelAPIError,
+    ModelInvalidRequestError,
+    ModelRateLimitError,
+)
+from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_google_genai import ChatGoogleGenerativeAI
+from pydantic import BaseModel, SecretStr
+
+from lecnotes.adapters.llm.fake import FakeLLM
+from lecnotes.config import Settings
+from lecnotes.errors import LLMError, QuotaExceeded, StructuredOutputError, UnknownModel
+from lecnotes.llm.gateway import LLMGateway, gemini_factory
+from lecnotes.llm.pricing import cost_usd
+from lecnotes.llm.rate_limit import rate_limiter, requests_per_minute
+from lecnotes.observability.tracing import traced_stage
+from lecnotes.prompts.loader import PromptSpec, RenderedPrompt
+from tests.support import SpanRecorder
+
+FLASH, LITE, PRO = "gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.5-pro"
+
+
+class Answer(BaseModel):
+    text: str
+    confidence: float
+
+
+ANSWER = Answer(text="enumerate yields (index, item)", confidence=0.9)
+
+
+def make_prompt(prompt_id: str = "qa", *, model: str | None = None) -> RenderedPrompt:
+    spec = PromptSpec(
+        id=prompt_id,
+        version=2,
+        model=model,
+        temperature=0.0,
+        response_schema="Answer",
+        changelog="test",
+        system="sys",
+        user="usr",
+    )
+    return RenderedPrompt(
+        ref=spec.ref, spec=spec, messages=[SystemMessage("sys"), HumanMessage("usr")]
+    )
+
+
+def make_gateway(fake: FakeLLM, *, fallback: str | None = LITE) -> LLMGateway:
+    return LLMGateway(
+        fake.factory,
+        default_model=FLASH,
+        fallback_model=fallback,
+        retry_attempts=3,
+        retry_backoff=False,  # no sleeping in unit tests
+    )
+
+
+async def test_returns_validated_output_with_usage() -> None:
+    fake = FakeLLM({"qa": ANSWER}, tokens_in=10_000, tokens_out=2_000)
+
+    result = await make_gateway(fake).generate_structured(make_prompt(), Answer)
+
+    assert result.output == ANSWER
+    assert result.usage.model == FLASH
+    assert (result.usage.tokens_in, result.usage.tokens_out) == (10_000, 2_000)
+    assert result.usage.cost_usd == Decimal("0.008")
+    assert result.usage.prompt.version == 2
+    assert result.usage.latency_ms >= 0
+    assert [(c.prompt_id, c.model) for c in fake.calls] == [("qa", FLASH)]
+
+
+async def test_prompt_model_overrides_default() -> None:
+    fake = FakeLLM({"qa": ANSWER})
+    result = await make_gateway(fake).generate_structured(make_prompt(model=PRO), Answer)
+    assert result.usage.model == PRO
+
+
+async def test_transient_error_is_retried() -> None:
+    fake = FakeLLM({"qa": [ModelAPIError("503"), ANSWER]})
+    result = await make_gateway(fake).generate_structured(make_prompt(), Answer)
+    assert result.output == ANSWER
+    assert [c.model for c in fake.calls] == [FLASH, FLASH]
+
+
+async def test_malformed_output_is_retried() -> None:
+    fake = FakeLLM({"qa": ['{"text": "missing confidence"}', ANSWER]})
+    result = await make_gateway(fake).generate_structured(make_prompt(), Answer)
+    assert result.output == ANSWER
+    assert len(fake.calls) == 2
+
+
+async def test_persistent_bad_output_raises_typed_error() -> None:
+    fake = FakeLLM({"qa": "not json at all"})
+    with pytest.raises(StructuredOutputError, match="did not match schema"):
+        await make_gateway(fake, fallback=None).generate_structured(make_prompt(), Answer)
+    assert len(fake.calls) == 3
+
+
+async def test_non_retryable_error_fails_fast() -> None:
+    fake = FakeLLM({"qa": ModelInvalidRequestError("400 bad schema")})
+    with pytest.raises(LLMError) as exc_info:
+        await make_gateway(fake).generate_structured(make_prompt(), Answer)
+    assert exc_info.value.retryable is False
+    assert len(fake.calls) == 1  # no retry, no fallback
+
+
+async def test_context_overflow_is_not_retried() -> None:
+    fake = FakeLLM({"qa": ContextOverflowError("too long")})
+    with pytest.raises(LLMError, match="context window"):
+        await make_gateway(fake).generate_structured(make_prompt(), Answer)
+    assert len(fake.calls) == 1
+
+
+async def test_quota_on_primary_falls_back_to_cheaper_model() -> None:
+    quota = ModelRateLimitError("429 RESOURCE_EXHAUSTED")
+    fake = FakeLLM({"qa": [quota, quota, quota, ANSWER]})
+
+    result = await make_gateway(fake).generate_structured(make_prompt(), Answer)
+
+    assert [c.model for c in fake.calls] == [FLASH, FLASH, FLASH, LITE]
+    assert result.usage.model == LITE
+    assert result.usage.cost_usd == cost_usd(LITE, tokens_in=100, tokens_out=50)
+
+
+async def test_quota_everywhere_raises_quota_exceeded() -> None:
+    fake = FakeLLM({"qa": ModelRateLimitError("429")})
+    with pytest.raises(QuotaExceeded) as exc_info:
+        await make_gateway(fake).generate_structured(make_prompt(), Answer)
+    assert exc_info.value.retryable is True
+    assert len(fake.calls) == 6  # 3 attempts x (primary + fallback)
+
+
+async def test_no_fallback_when_prompt_pins_the_fallback_model() -> None:
+    fake = FakeLLM({"qa": ModelRateLimitError("429")})
+    with pytest.raises(QuotaExceeded):
+        await make_gateway(fake).generate_structured(make_prompt(model=LITE), Answer)
+    assert len(fake.calls) == 3
+
+
+def test_unknown_model_fails_at_construction() -> None:
+    with pytest.raises(UnknownModel):
+        LLMGateway(FakeLLM({}).factory, default_model="gemini-typo")
+
+
+async def test_generation_is_traced_under_stage_span(span_recorder: SpanRecorder) -> None:
+    fake = FakeLLM({"qa": ANSWER})
+    with traced_stage("qa", version=1):
+        await make_gateway(fake).generate_structured(
+            make_prompt(), Answer, metadata={"video_id": "dQw4w9WgXcQ"}
+        )
+
+    spans = span_recorder.spans()
+    stage = next(s for s in spans if s.name == "stage:qa")
+    generations = [
+        s for s in spans if (s.attributes or {}).get("langfuse.observation.type") == "generation"
+    ]
+    assert len(generations) == 1
+    gen = generations[0]
+    assert stage.context is not None
+    assert gen.context is not None
+    assert gen.context.trace_id == stage.context.trace_id
+
+    # Walk up from the generation: the stage span must be an ancestor.
+    by_id = {s.context.span_id: s for s in spans if s.context}
+    node, ancestors = gen, []
+    while node.parent is not None and node.parent.span_id in by_id:
+        node = by_id[node.parent.span_id]
+        ancestors.append(node.name)
+    assert "stage:qa" in ancestors
+
+    attrs = {k: v for s in spans for k, v in (s.attributes or {}).items()}
+    assert any("prompt_version" in k for k in attrs)
+    assert any(str(v).find("dQw4w9WgXcQ") >= 0 for v in attrs.values())
+
+
+def test_rate_limiter_shared_per_model_and_sized_from_registry() -> None:
+    rpm = requests_per_minute(FLASH)
+    assert rpm == 10
+    assert requests_per_minute(FLASH, override=4) == 4
+    limiter = rate_limiter(FLASH, rpm)
+    assert limiter is rate_limiter(FLASH, rpm)
+    assert limiter.requests_per_second == pytest.approx(10 / 60)
+
+
+def test_gemini_factory_disables_sdk_retries_and_shares_limiter(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Construction is offline. Guards the "SDK retries x our retries" quota burn.
+    monkeypatch.setitem(Settings.model_config, "env_file", None)
+    settings = Settings(
+        gemini_api_key=SecretStr("k"),
+        youtube_api_key=SecretStr("k"),
+        database_url=SecretStr("postgresql://x"),
+        langfuse_public_key=SecretStr("k"),
+        langfuse_secret_key=SecretStr("k"),
+    )
+    model = gemini_factory(settings)(FLASH, 0.3)
+
+    assert isinstance(model, ChatGoogleGenerativeAI)
+    assert model.max_retries == 1
+    assert model.temperature == 0.3
+    assert model.rate_limiter is rate_limiter(FLASH, requests_per_minute(FLASH))

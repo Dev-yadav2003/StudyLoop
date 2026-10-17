@@ -20,7 +20,9 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from typing import Any
 
+from langchain_core.callbacks import BaseCallbackHandler
 from langfuse import Langfuse, LangfuseSpan, propagate_attributes
+from langfuse.langchain import CallbackHandler
 
 from lecnotes import __version__
 from lecnotes.config import Settings
@@ -29,27 +31,46 @@ from lecnotes.observability.logging import bind_context
 TRACE_NAME = "lecture-notes"
 
 _client: Langfuse | None = None
+_public_key: str | None = None
 
 
 class TracingNotInitialized(RuntimeError):
     pass
 
 
-def init_tracing(settings: Settings | None = None, *, client: Langfuse | None = None) -> Langfuse:
-    """Create the process-wide Langfuse client. Pass `client` to inject one (tests, scripts)."""
-    global _client
-    if client is None:
-        if settings is None:
-            raise ValueError("init_tracing needs either settings or a client")
-        client = Langfuse(
-            public_key=settings.langfuse_public_key.get_secret_value(),
-            secret_key=settings.langfuse_secret_key.get_secret_value(),
-            base_url=settings.langfuse_base_url,
-            environment=settings.env,
-            release=__version__,
-        )
-    _client = client
-    return client
+def init_tracing(
+    *,
+    public_key: str,
+    secret_key: str,
+    base_url: str,
+    environment: str = "dev",
+    **client_kwargs: Any,
+) -> Langfuse:
+    """Create the process-wide Langfuse client.
+
+    `client_kwargs` go straight to `Langfuse(...)`; tests use them to inject an in-memory
+    OpenTelemetry `tracer_provider` + `span_exporter`.
+    """
+    global _client, _public_key
+    _client = Langfuse(
+        public_key=public_key,
+        secret_key=secret_key,
+        base_url=base_url,
+        environment=environment,
+        release=__version__,
+        **client_kwargs,
+    )
+    _public_key = public_key
+    return _client
+
+
+def init_tracing_from_settings(settings: Settings) -> Langfuse:
+    return init_tracing(
+        public_key=settings.langfuse_public_key.get_secret_value(),
+        secret_key=settings.langfuse_secret_key.get_secret_value(),
+        base_url=settings.langfuse_base_url,
+        environment=settings.env,
+    )
 
 
 def get_langfuse() -> Langfuse:
@@ -58,12 +79,24 @@ def get_langfuse() -> Langfuse:
     return _client
 
 
+def langchain_callbacks() -> list[BaseCallbackHandler]:
+    """Callbacks that trace LangChain runs as Langfuse generations under the current span.
+
+    Empty when tracing is not initialised, so the LLM gateway works in scripts and tests
+    without a Langfuse project.
+    """
+    if _client is None:
+        return []
+    return [CallbackHandler(public_key=_public_key)]
+
+
 def shutdown_tracing() -> None:
     """Flush pending spans and release the client. Call on app shutdown / end of script."""
-    global _client
+    global _client, _public_key
     if _client is not None:
         _client.shutdown()
-        _client = None
+    _client = None
+    _public_key = None
 
 
 @contextmanager
