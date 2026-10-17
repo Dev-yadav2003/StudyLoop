@@ -39,6 +39,9 @@ class GoldenVideo(_Strict):
     title: str
     type: LectureType
     tags: list[str] = Field(default_factory=list, description="e.g. fast-talker, poor-audio")
+    terms: list[str] = Field(
+        default_factory=list, description="Technical terms spoken in the video (term WER)"
+    )
     notes: str = ""
 
     @property

@@ -6,5 +6,6 @@
 #     title: "Python enumerate and zip"
 #     type: code               # slides | whiteboard | code | mixed
 #     tags: [indian-english]   # fast-talker, poor-audio, playlist:<name>, ...
+#     terms: [enumerate, zip, iterable, "list comprehension"]   # for term error rate
 #     notes: "small IDE font; scrolls a lot"
 videos: []
