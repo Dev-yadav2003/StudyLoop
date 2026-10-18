@@ -47,7 +47,7 @@ export function Sidebar({ onNavigate }: { onNavigate: () => void }) {
           <span className="brand-mark">
             <BookIcon size={17} />
           </span>
-          LecNotes
+          StudyLoop
         </Link>
       </div>
       <div className="new-lesson">

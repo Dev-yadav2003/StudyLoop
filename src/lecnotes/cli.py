@@ -32,7 +32,7 @@ ServicesFactory = Callable[[Settings, bool], AbstractAsyncContextManager[Service
 
 
 def _parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="lecnotes", description="Lecture-to-Notes dev CLI")
+    parser = argparse.ArgumentParser(prog="lecnotes", description="StudyLoop dev CLI")
     sub = parser.add_subparsers(dest="command", required=True)
     run = sub.add_parser("run", help="run the pipeline on one YouTube video link")
     run.add_argument("url")

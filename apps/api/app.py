@@ -40,7 +40,7 @@ def create_app(
             shutdown_tracing()
 
     app = FastAPI(
-        title="Lecture-to-Notes API",
+        title="StudyLoop API",
         version=__version__,
         description="Turn one YouTube lecture into faithful, timestamped study notes.",
         lifespan=lifespan,

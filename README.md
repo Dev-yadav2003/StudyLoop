@@ -1,7 +1,8 @@
-# Lecture-to-Notes
+# StudyLoop
 
-Turn a public YouTube lecture (or playlist) into faithful, timestamped study notes covering
-what the teacher **said** and what they **wrote or showed**.
+Turn a public YouTube lecture into faithful, timestamped study notes covering what the
+teacher **said** and what they **wrote or showed** — organised in chapters, with practice
+questions to test yourself.
 
 See [`plan.md`](plan.md) for the architecture and build plan, and
 [`docs/devlog.md`](docs/devlog.md) for progress notes and measured results.

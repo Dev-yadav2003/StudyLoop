@@ -32,7 +32,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <span className="brand-mark">
               <BookIcon size={15} />
             </span>
-            LecNotes
+            StudyLoop
           </Link>
         </header>
         <main className="page">{children}</main>

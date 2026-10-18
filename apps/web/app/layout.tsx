@@ -11,7 +11,7 @@ import { Providers } from "./providers";
 const inter = Inter({ subsets: ["latin"], display: "swap", variable: "--font-inter" });
 
 export const metadata: Metadata = {
-  title: "LecNotes",
+  title: { default: "StudyLoop", template: "%s · StudyLoop" },
   description: "Turn YouTube lectures into clear, timestamped study notes — organised in chapters.",
 };
 
