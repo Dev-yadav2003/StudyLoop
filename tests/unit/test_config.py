@@ -35,7 +35,7 @@ def test_defaults_load() -> None:
     assert s.chunk_max_s == 300
     assert s.features.verify is True
     assert s.features.merge is True
-    assert s.gemini_api_key.get_secret_value() == "g-key"
+    assert s.gemini_keys == ["g-key"]
 
 
 def test_missing_secrets_raise_clear_error() -> None:

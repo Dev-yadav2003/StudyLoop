@@ -21,6 +21,7 @@ from pydantic import (
     ValidationError,
     ValidationInfo,
     field_validator,
+    model_validator,
 )
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
@@ -52,7 +53,12 @@ class Settings(BaseSettings):
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
 
     # --- secrets (required) ---
-    gemini_api_key: SecretStr
+    gemini_api_key: SecretStr | None = None
+    gemini_api_keys: Annotated[list[SecretStr], NoDecode] = Field(
+        default_factory=list,
+        validate_default=True,  # so "no key at all" is reported with any other missing setting
+        description="More keys for failover, comma-separated; tried in order after GEMINI_API_KEY",
+    )
     youtube_api_key: SecretStr
     database_url: SecretStr
     langfuse_public_key: SecretStr
@@ -60,9 +66,13 @@ class Settings(BaseSettings):
     langfuse_base_url: str = "https://cloud.langfuse.com"
 
     # --- models ---
+    # GEMINI_MODELS=a,b,c sets all three: `a` for every stage, then b, c as fallbacks.
+    gemini_models: Annotated[list[str], NoDecode] = Field(default_factory=list)
     perceive_model: str = "gemini-2.5-flash"
     text_model: str = "gemini-2.5-flash"
-    fallback_model: str = "gemini-3.1-flash-lite"
+    fallback_models: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: ["gemini-2.5-flash-lite", "gemini-3.1-flash-lite"]
+    )
     llm_rpm_override: float | None = Field(
         default=None, gt=0, description="None = use the model registry's free-tier RPM"
     )
@@ -114,6 +124,54 @@ class Settings(BaseSettings):
     job_lease_s: float = Field(default=120.0, gt=0)
     job_max_attempts: int = Field(default=3, ge=1)
 
+    @model_validator(mode="before")
+    @classmethod
+    def _models_from_list(cls, data: object) -> object:
+        """GEMINI_MODELS is the one place to choose models; explicit per-stage settings win."""
+        if isinstance(data, dict) and data.get("gemini_models"):
+            raw = data["gemini_models"]
+            models = [m.strip() for m in (raw.split(",") if isinstance(raw, str) else raw)]
+            models = [m for m in models if m]
+            if models:
+                data = dict(data)
+                data.setdefault("text_model", models[0])
+                data.setdefault("perceive_model", models[0])
+                data.setdefault("fallback_models", models[1:])
+        return data
+
+    @field_validator("gemini_models", "fallback_models", mode="before")
+    @classmethod
+    def _model_list(cls, value: object) -> object:
+        if isinstance(value, str):
+            return [m.strip() for m in value.split(",") if m.strip()]
+        return value
+
+    @field_validator("gemini_api_key", mode="before")
+    @classmethod
+    def _blank_key_is_unset(cls, value: object) -> object:
+        """`GEMINI_API_KEY=` (empty) with keys in GEMINI_API_KEYS is fine: treated as unset."""
+        return None if isinstance(value, str) and not value.strip() else value
+
+    @field_validator("gemini_api_keys", mode="before")
+    @classmethod
+    def _key_list(cls, value: object) -> object:
+        if isinstance(value, str):
+            return [k.strip() for k in value.split(",") if k.strip()]
+        return value
+
+    @field_validator("gemini_api_keys")
+    @classmethod
+    def _has_a_key(cls, value: list[SecretStr], info: ValidationInfo) -> list[SecretStr]:
+        if not value and info.data.get("gemini_api_key") is None:
+            raise ValueError("set GEMINI_API_KEY or GEMINI_API_KEYS")
+        return value
+
+    @property
+    def gemini_keys(self) -> list[str]:
+        """Every distinct key, GEMINI_API_KEY first. Never logged."""
+        raw = [self.gemini_api_key, *self.gemini_api_keys]
+        return list(dict.fromkeys(k.get_secret_value().strip() for k in raw if k is not None))
+
     @field_validator(
         "gemini_api_key",
         "youtube_api_key",
@@ -122,8 +180,8 @@ class Settings(BaseSettings):
         "langfuse_secret_key",
     )
     @classmethod
-    def _secret_not_blank(cls, value: SecretStr) -> SecretStr:
-        if not value.get_secret_value().strip():
+    def _secret_not_blank(cls, value: SecretStr | None) -> SecretStr | None:
+        if value is not None and not value.get_secret_value().strip():
             raise ValueError("must not be empty")
         return value
 

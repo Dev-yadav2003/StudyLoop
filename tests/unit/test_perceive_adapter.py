@@ -28,9 +28,7 @@ def sample() -> PerceiveOutput:
 
 
 def perceiver(fake: FakeLLM, **kwargs: Any) -> GeminiUrlPerceiver:
-    gateway = LLMGateway(
-        fake.factory, default_model=FLASH, fallback_model=None, retry_backoff=False
-    )
+    gateway = LLMGateway(fake.factory, default_model=FLASH, retry_backoff=False)
     return GeminiUrlPerceiver(
         gateway, model=FLASH, fps=0.5, media_resolution="low", timeout_s=600, **kwargs
     )

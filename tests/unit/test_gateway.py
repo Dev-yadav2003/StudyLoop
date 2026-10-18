@@ -62,7 +62,7 @@ def make_gateway(fake: FakeLLM, *, fallback: str | None = LITE) -> LLMGateway:
     return LLMGateway(
         fake.factory,
         default_model=FLASH,
-        fallback_model=fallback,
+        fallback_models=[fallback] if fallback else [],
         retry_attempts=3,
         retry_backoff=False,  # no sleeping in unit tests
     )
@@ -208,7 +208,7 @@ def test_gemini_factory_disables_sdk_retries_and_shares_limiter(
         langfuse_public_key=SecretStr("k"),
         langfuse_secret_key=SecretStr("k"),
     )
-    model = gemini_factory(settings)(FLASH, 0.3, ModelOptions(media_resolution="low"))
+    model = gemini_factory(settings)(FLASH, 0.3, ModelOptions(media_resolution="low"), 0)
 
     assert isinstance(model, ChatGoogleGenerativeAI)
     assert model.max_retries == 1

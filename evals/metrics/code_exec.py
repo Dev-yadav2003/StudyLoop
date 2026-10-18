@@ -237,23 +237,44 @@ class LocalRunner:
         env = {"PYTHONIOENCODING": "utf-8"}
         if sys.platform == "win32":
             env["SYSTEMROOT"] = os.environ.get("SYSTEMROOT", r"C:\Windows")
+        # The base interpreter, not the venv's: on Windows the venv python.exe is a launcher
+        # that starts the real interpreter as a child, and killing only the launcher left a
+        # `while True` snippet spinning (and holding the pipes, so the check hung). -I needs
+        # no venv packages anyway.
+        python = getattr(sys, "_base_executable", None) or sys.executable
         with tempfile.TemporaryDirectory(prefix="code-check-") as cwd:
+            proc = subprocess.Popen(
+                [python, "-I", "-c", source],
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                cwd=cwd,
+                env=env,
+                # own process group/session, so a timeout can kill everything it started
+                start_new_session=sys.platform != "win32",
+                creationflags=getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0),
+                preexec_fn=_limits if sys.platform != "win32" else None,
+            )
             try:
-                done = subprocess.run(
-                    [sys.executable, "-I", "-c", source],
-                    stdin=subprocess.DEVNULL,
-                    capture_output=True,
-                    text=True,
-                    encoding="utf-8",
-                    errors="replace",
-                    timeout=timeout_s,
-                    cwd=cwd,
-                    env=env,
-                    preexec_fn=_limits if sys.platform != "win32" else None,
-                )
+                stdout, stderr = proc.communicate(timeout=timeout_s)
             except subprocess.TimeoutExpired:
+                _kill_tree(proc)
+                proc.communicate()
                 return RunOutcome(-1, "", "", timed_out=True)
-        return RunOutcome(done.returncode, done.stdout, done.stderr)
+        return RunOutcome(proc.returncode, stdout, stderr)
+
+
+def _kill_tree(proc: subprocess.Popen[str]) -> None:
+    """Kill the snippet and anything it started."""
+    if sys.platform == "win32":
+        subprocess.run(["taskkill", "/T", "/F", "/PID", str(proc.pid)], capture_output=True)
+    else:
+        import signal
+
+        os.killpg(proc.pid, signal.SIGKILL)
 
 
 def _limits() -> None:  # pragma: no cover - POSIX only, runs in the child

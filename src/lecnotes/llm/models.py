@@ -4,11 +4,13 @@ Google no longer publishes free-tier RPM/RPD (checked 2026-10-17): they are only
 AI Studio for your key. Values below are conservative and marked unverified — confirm them
 in AI Studio and edit this file, the single source of truth for the rate limiter.
 
-Listing a model via the API does not mean a new key may call it: `gemini-2.5-pro` and
-`gemini-2.5-flash-lite` are listed but return 404 "no longer available to new users"
-(probed 2026-10-17), so they are deliberately not registered — a config naming them fails at
-startup, not mid-job. `gemini-3.5-flash-lite` works but ignores `temperature` ("fixed
-sampling defaults"), which breaks reproducibility, so it isn't registered either.
+Listing a model via the API does not mean a key may call it: on 2026-10-17 the first key got
+404 "no longer available to new users" for `gemini-2.5-pro` and `gemini-2.5-flash-lite`;
+on 2026-10-19 all eleven failover keys could call `gemini-2.5-flash-lite` (probed with a
+one-line request), so it is registered as the first fallback. `gemini-2.0-flash` is retired
+(404 "no longer available") — not registered, so a config naming it fails at startup.
+`gemini-3.5-flash-lite` works but ignores `temperature` ("fixed sampling defaults"), which
+breaks reproducibility, so it isn't registered either.
 """
 
 from __future__ import annotations
@@ -29,7 +31,11 @@ _MODELS = [
         name="gemini-2.5-flash",
         requests_per_minute=10,
     ),
-    ModelInfo(  # fallback when the primary is out of quota
+    ModelInfo(  # first fallback: same generation as the primary, cheaper
+        name="gemini-2.5-flash-lite",
+        requests_per_minute=10,  # unverified, conservative
+    ),
+    ModelInfo(  # second fallback
         name="gemini-3.1-flash-lite",
         requests_per_minute=10,  # unverified, conservative
     ),

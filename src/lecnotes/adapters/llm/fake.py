@@ -43,6 +43,7 @@ class FakeCall:
     model: str
     options: ModelOptions
     messages: list[BaseMessage]
+    key: int = 0
 
 
 class FakeScriptExhausted(AssertionError):
@@ -84,10 +85,12 @@ class FakeLLM:
             **kwargs,
         )
 
-    def factory(self, model: str, temperature: float, options: ModelOptions) -> FakeChatModel:
+    def factory(
+        self, model: str, temperature: float, options: ModelOptions, key: int = 0
+    ) -> FakeChatModel:
         """Matches the gateway's `ModelFactory` signature."""
         return FakeChatModel(
-            script=self, model_name=model, temperature=temperature, options=options
+            script=self, model_name=model, temperature=temperature, options=options, key=key
         )
 
     def next(self, prompt_id: str, model: FakeChatModel, messages: list[BaseMessage]) -> Scripted:
@@ -97,6 +100,7 @@ class FakeLLM:
                 model=model.model_name,
                 options=model.options,
                 messages=messages,
+                key=model.key,
             )
         )
         if prompt_id in self._repeat:
@@ -114,6 +118,7 @@ class FakeChatModel(BaseChatModel):
     model_name: str
     temperature: float = 0.0
     options: ModelOptions = ModelOptions()
+    key: int = 0
 
     @property
     def _llm_type(self) -> str:

@@ -1,7 +1,3 @@
-# ADR 0007 — One link = one video (no playlists)
-
-- **Status:** accepted, 2026-10-17
-- **Decision by:** product owner
 
 ## Context
 

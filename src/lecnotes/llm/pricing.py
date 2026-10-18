@@ -24,6 +24,7 @@ class Price:
 
 PRICES: dict[str, Price] = {
     "gemini-2.5-flash": Price(input_per_m=Decimal("0.30"), output_per_m=Decimal("2.50")),
+    "gemini-2.5-flash-lite": Price(input_per_m=Decimal("0.10"), output_per_m=Decimal("0.40")),
     "gemini-3.1-flash-lite": Price(input_per_m=Decimal("0.25"), output_per_m=Decimal("1.50")),
     "gemini-3-flash-preview": Price(input_per_m=Decimal("0.50"), output_per_m=Decimal("3.00")),
 }

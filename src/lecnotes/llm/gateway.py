@@ -4,7 +4,8 @@ Every call goes through `LLMGateway.generate_structured`, which guarantees it is
   - validated  — output parsed into the requested Pydantic schema, or a typed error;
   - rate-limited — per-model token bucket sized to the free tier;
   - retried    — only on errors that can succeed on a second attempt;
-  - degraded   — falls back to a cheaper model when the primary is out of quota;
+  - failed over — to the next API key when a key is invalid or out of quota (same model
+                 first, so quality doesn't drop), then to the next model in the list;
   - traced     — Langfuse generation nested under the current stage span;
   - costed     — tokens + list-price cost returned in `LLMResult.usage`.
 
@@ -15,10 +16,10 @@ and exercise the exact same retry / fallback / tracing path offline.
 from __future__ import annotations
 
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from functools import partial
-from typing import Any, Literal, cast
+from typing import Any, Literal, NoReturn, cast
 
 import httpx
 from google.genai.types import MediaResolution
@@ -40,16 +41,20 @@ from langchain_core.messages import AIMessage, BaseMessage
 from langchain_core.outputs import ChatResult
 from langchain_core.runnables import Runnable, RunnableConfig, RunnableLambda
 from langchain_google_genai import ChatGoogleGenerativeAI
-from pydantic import BaseModel
+from pydantic import BaseModel, SecretStr
 
 from lecnotes.config import Settings
 from lecnotes.domain import LLMUsage
 from lecnotes.errors import LLMError, OutputTruncated, QuotaExceeded, StructuredOutputError
+from lecnotes.llm.keys import KeyPool, key_problem
 from lecnotes.llm.models import get_model
 from lecnotes.llm.pricing import cost_usd
 from lecnotes.llm.rate_limit import rate_limiter, requests_per_minute
+from lecnotes.observability.logging import get_logger
 from lecnotes.observability.tracing import langchain_callbacks
 from lecnotes.prompts.loader import RenderedPrompt
+
+log = get_logger(__name__)
 
 
 @dataclass(frozen=True)
@@ -65,8 +70,8 @@ class ModelOptions:
     timeout_s: float | None = None
 
 
-ModelFactory = Callable[[str, float, ModelOptions], BaseChatModel]
-"""(model name, temperature, options) -> chat model."""
+ModelFactory = Callable[[str, float, ModelOptions, int], BaseChatModel]
+"""(model name, temperature, options, API-key index) -> chat model."""
 
 _MEDIA_RESOLUTION = {
     "low": MediaResolution.MEDIA_RESOLUTION_LOW,
@@ -137,7 +142,9 @@ class _GeminiChat(ChatGoogleGenerativeAI):
 def gemini_factory(settings: Settings) -> ModelFactory:
     """Production factory: Gemini via LangChain, with SDK retries off (we retry one level up)."""
 
-    def build(model: str, temperature: float, options: ModelOptions) -> BaseChatModel:
+    keys = settings.gemini_keys
+
+    def build(model: str, temperature: float, options: ModelOptions, key: int) -> BaseChatModel:
         rpm = requests_per_minute(model, settings.llm_rpm_override)
         resolution = options.media_resolution
         # Field aliases (retries / request_timeout / max_tokens): pyright types a pydantic
@@ -145,8 +152,8 @@ def gemini_factory(settings: Settings) -> ModelFactory:
         return _GeminiChat(
             model=model,
             temperature=temperature,
-            api_key=settings.gemini_api_key,
-            rate_limiter=rate_limiter(model, rpm),
+            api_key=SecretStr(keys[key]),
+            rate_limiter=rate_limiter(model, rpm),  # per model, shared by every key
             # The SDK defaults to 6 internal retries; combined with ours that would be 18
             # requests per failure. 1 = "no SDK retries" (0 means "SDK default").
             retries=1,
@@ -168,16 +175,19 @@ class LLMGateway:
         model_factory: ModelFactory,
         *,
         default_model: str,
-        fallback_model: str | None = None,
+        fallback_models: Sequence[str] = (),
+        keys: int = 1,
         retry_attempts: int = 3,
         retry_backoff: bool = True,
         callbacks: Callable[[], list[BaseCallbackHandler]] = langchain_callbacks,
+        key_pool: KeyPool | None = None,
     ) -> None:
-        for name in filter(None, (default_model, fallback_model)):
+        for name in (default_model, *fallback_models):
             get_model(name)  # fail at startup on a typo, not on the first call
         self._factory = model_factory
         self._default_model = default_model
-        self._fallback_model = fallback_model if fallback_model != default_model else None
+        self._fallbacks = [m for m in dict.fromkeys(fallback_models) if m != default_model]
+        self._keys = key_pool or KeyPool(keys)
         self._retry_attempts = retry_attempts
         self._retry_backoff = retry_backoff
         self._callbacks = callbacks
@@ -187,7 +197,8 @@ class LLMGateway:
         return cls(
             gemini_factory(settings),
             default_model=settings.text_model,
-            fallback_model=settings.fallback_model,
+            fallback_models=settings.fallback_models,
+            keys=len(settings.gemini_keys),
             retry_attempts=settings.llm_retry_attempts,
         )
 
@@ -205,35 +216,51 @@ class LLMGateway:
         primary = prompt.spec.model or model or self._default_model
         get_model(primary)
         opts = options or ModelOptions()
-        chain = self._branch(primary, prompt, opts, schema)
-        if self._fallback_model and self._fallback_model != primary:
-            fallback = self._branch(self._fallback_model, prompt, opts, schema)
-            chain = chain.with_fallbacks([fallback], exceptions_to_handle=TRANSIENT_ERRORS)
-
-        config: RunnableConfig = {
-            "callbacks": self._callbacks(),
-            "run_name": f"llm:{prompt.ref}",
-            "metadata": {
-                "prompt_id": prompt.ref.id,
-                "prompt_version": prompt.ref.version,
-                "response_schema": schema.__name__,
-                **(metadata or {}),
-            },
+        # A prompt that pins its model is reproducible by design: no model fallback for it.
+        models = [primary] if prompt.spec.model else [primary, *self._fallbacks]
+        models = list(dict.fromkeys(models))
+        base_metadata = {
+            "prompt_id": prompt.ref.id,
+            "prompt_version": prompt.ref.version,
+            "response_schema": schema.__name__,
+            **(metadata or {}),
         }
 
         started = time.perf_counter()
-        try:
-            attempt = await chain.ainvoke(prompt.messages, config=config)
-        except (StructuredOutputError, OutputTruncated):
-            raise
-        except ModelRateLimitError as exc:
-            raise QuotaExceeded(f"{prompt.ref}: rate limit / quota exhausted: {exc}") from exc
-        except ContextOverflowError as exc:
-            raise LLMError(f"{prompt.ref}: input exceeds context window: {exc}") from exc
-        except ModelError as exc:
-            raise LLMError(f"{prompt.ref}: {exc}", retryable=exc.is_retryable) from exc
-        except httpx.TransportError as exc:
-            raise LLMError(f"{prompt.ref}: {type(exc).__name__}: {exc}", retryable=True) from exc
+        attempt, last_error = None, None
+        for name in models:
+            keys = self._keys.available(name)
+            for key in keys:
+                config: RunnableConfig = {
+                    "callbacks": self._callbacks(),
+                    "run_name": f"llm:{prompt.ref}",
+                    "metadata": base_metadata | {"api_key_index": key},
+                }
+                chain = self._branch(name, key, prompt, opts, schema)
+                try:
+                    attempt = await chain.ainvoke(prompt.messages, config=config)
+                    break
+                except OutputTruncated:
+                    raise  # another key or model would truncate the same way
+                except Exception as exc:
+                    last_error = exc
+                    problem = key_problem(exc)
+                    if problem is not None:  # this key is broken or out of quota: next key
+                        self._keys.bench(key, name, problem)
+                        log.warning(
+                            "llm.key_benched", model=name, key=key, seconds=problem.seconds,
+                            all_models=problem.all_models, error=type(exc).__name__,
+                        )  # fmt: skip
+                        continue
+                    if isinstance(exc, TRANSIENT_ERRORS):
+                        break  # not the key's fault and retries are used up: next model
+                    _raise_mapped(prompt, exc)
+            if attempt is not None:
+                break
+        if attempt is None:
+            if last_error is None:
+                raise QuotaExceeded(f"{prompt.ref}: every API key is benched for {models}")
+            _raise_mapped(prompt, last_error)
         latency_ms = (time.perf_counter() - started) * 1000
 
         usage = attempt.raw.usage_metadata or {}
@@ -253,15 +280,26 @@ class LLMGateway:
         )
 
     def _branch(
-        self, model: str, prompt: RenderedPrompt, options: ModelOptions, schema: type[BaseModel]
+        self,
+        model: str,
+        key: int,
+        prompt: RenderedPrompt,
+        options: ModelOptions,
+        schema: type[BaseModel],
     ) -> Runnable[Any, _Attempt]:
-        """model → structured output (with raw message) → validate, retried as one unit."""
-        llm = self._factory(model, prompt.spec.temperature, options)
+        """model → structured output (with raw message) → validate, retried as one unit.
+        With several keys, a 429 isn't retried on the same key: the next key is used instead."""
+        llm = self._factory(model, prompt.spec.temperature, options, key)
         llm.name = f"{model}:{prompt.ref}"  # the Langfuse generation's name; llm is per-call
         structured = llm.with_structured_output(schema, include_raw=True)
         unwrap = RunnableLambda(partial(_unwrap, model=model, schema=schema))
+        retry_on = (
+            TRANSIENT_ERRORS
+            if self._keys.size == 1
+            else tuple(e for e in TRANSIENT_ERRORS if e is not ModelRateLimitError)
+        )
         return structured.pipe(unwrap).with_retry(
-            retry_if_exception_type=TRANSIENT_ERRORS,
+            retry_if_exception_type=retry_on,
             stop_after_attempt=self._retry_attempts,
             wait_exponential_jitter=self._retry_backoff,
         )
@@ -279,3 +317,28 @@ def _unwrap(result: dict[str, Any], *, model: str, schema: type[BaseModel]) -> _
     if not isinstance(raw, AIMessage):
         raise LLMError(f"{model}: unexpected raw response type {type(raw).__name__}")
     return _Attempt(parsed=parsed, raw=raw, model=model)
+
+
+def _mapped(prompt: RenderedPrompt, exc: BaseException) -> Exception:
+    """A provider/LangChain error as one of our typed errors (what the job runner understands);
+    anything else unchanged."""
+    if isinstance(exc, (StructuredOutputError, OutputTruncated, LLMError)):
+        return exc
+    if isinstance(exc, ModelRateLimitError) or key_problem(exc) is not None:
+        return QuotaExceeded(f"{prompt.ref}: every API key is out of quota or invalid: {exc}")
+    if isinstance(exc, ContextOverflowError):
+        return LLMError(f"{prompt.ref}: input exceeds context window: {exc}")
+    if isinstance(exc, ModelError):
+        return LLMError(f"{prompt.ref}: {exc}", retryable=exc.is_retryable)
+    if isinstance(exc, httpx.TransportError):
+        return LLMError(f"{prompt.ref}: {type(exc).__name__}: {exc}", retryable=True)
+    if isinstance(exc, Exception):
+        return exc  # not a provider error (e.g. a bug in our code): don't disguise it
+    return LLMError(f"{prompt.ref}: {type(exc).__name__}: {exc}")
+
+
+def _raise_mapped(prompt: RenderedPrompt, exc: BaseException) -> NoReturn:
+    mapped = _mapped(prompt, exc)
+    if mapped is exc:
+        raise exc  # unchanged: `raise exc from exc` would make it its own cause (a cycle)
+    raise mapped from exc

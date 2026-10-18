@@ -1,5 +1,7 @@
 """Code check. Only snippets written here are executed (LocalRunner); lecture code is not."""
 
+import time
+
 import pytest
 
 from evals.metrics.code_exec import (
@@ -102,7 +104,18 @@ def test_output_is_compared_with_what_the_code_prints() -> None:
 def test_local_runner_times_out_and_sees_no_secrets(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("GEMINI_API_KEY", "must-not-leak")
     runner = LocalRunner()
+    started = time.monotonic()
     assert runner.run("while True: pass", timeout_s=1).timed_out
+    assert time.monotonic() - started < 15  # returns promptly: nothing left holding the pipes
+    # a snippet that starts its own child: the whole tree goes on timeout
+    spawn = (
+        "import subprocess, sys\n"
+        "subprocess.Popen([sys.executable, '-c', 'while True: pass'])\n"
+        "while True: pass"
+    )
+    started = time.monotonic()
+    assert runner.run(spawn, timeout_s=2).timed_out
+    assert time.monotonic() - started < 20
     leaked = runner.run("import os; print(os.environ.get('GEMINI_API_KEY'))", timeout_s=10)
     assert leaked.stdout.strip() == "None"
 
