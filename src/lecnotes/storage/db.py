@@ -6,7 +6,13 @@ disabled because Supabase's pooler (pgbouncer, transaction mode) cannot route th
 
 from __future__ import annotations
 
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
+from functools import cache
+from pathlib import Path
+
+from alembic.script import ScriptDirectory
+from sqlalchemy import text
+from sqlalchemy.exc import ProgrammingError
+from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, AsyncSession, async_sessionmaker
 from sqlalchemy.ext.asyncio import create_async_engine as _create_async_engine
 
 _DRIVER = "postgresql+psycopg"
@@ -37,3 +43,23 @@ def create_engine(url: str, *, pool_size: int = 3, connect_timeout_s: int = 10) 
 
 def session_factory(engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:
     return async_sessionmaker(engine, expire_on_commit=False)
+
+
+MIGRATIONS = Path(__file__).parent / "migrations"
+
+
+@cache
+def code_schema_revision() -> str:
+    """The newest migration this code expects (Alembic head)."""
+    head = ScriptDirectory(str(MIGRATIONS)).get_current_head()
+    if head is None:
+        raise RuntimeError(f"no migrations found in {MIGRATIONS}")
+    return head
+
+
+async def db_schema_revision(conn: AsyncConnection) -> str | None:
+    """The migration the database is at (None if it was never migrated)."""
+    try:
+        return (await conn.execute(text("select version_num from alembic_version"))).scalar()
+    except ProgrammingError:  # no alembic_version table
+        return None

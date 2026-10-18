@@ -8,6 +8,7 @@ from uuid import UUID, uuid4
 import httpx
 import pytest
 from pydantic import SecretStr
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from apps.api.app import create_app
@@ -15,6 +16,7 @@ from lecnotes.adapters.cache.postgres_cache import PostgresStageCache
 from lecnotes.bootstrap import ApiContainer
 from lecnotes.jobs.queue import JobQueue
 from lecnotes.jobs.runner import JobRunner
+from lecnotes.storage.db import code_schema_revision
 from lecnotes.storage.repositories.notes import NotesRepository
 from lecnotes.storage.repositories.stage_runs import PostgresStageRunSink
 from tests.pipeline_fakes import UNIT_ID, URL, VID, fake_services, make_settings
@@ -250,7 +252,7 @@ async def test_health_ready_request_id_and_openapi(api: Api) -> None:
     assert (await api.client.get("/healthz")).json() == {"status": "ok"}
     ready = await api.client.get("/readyz")
     assert ready.status_code == 200
-    assert ready.json()["checks"] == {"database": "ok"}  # worker disabled in tests
+    assert ready.json()["checks"] == {"database": "ok", "schema": "ok"}  # no worker in tests
 
     echoed = await api.client.get("/healthz", headers={"X-Request-ID": "abc-123"})
     assert echoed.headers["X-Request-ID"] == "abc-123"
@@ -259,3 +261,16 @@ async def test_health_ready_request_id_and_openapi(api: Api) -> None:
 
     spec = (await api.client.get("/openapi.json")).json()
     assert {"/v1/jobs", "/v1/jobs/{job_id}", "/v1/notes/{notes_id}"} <= set(spec["paths"])
+
+
+async def test_readyz_fails_when_a_migration_is_missing(api: Api, engine: AsyncEngine) -> None:
+    head = code_schema_revision()
+    async with engine.begin() as conn:
+        await conn.execute(text("update alembic_version set version_num = 'old'"))
+    try:
+        ready = await api.client.get("/readyz")
+        assert ready.status_code == 503
+        assert ready.json()["checks"]["schema"].startswith(f"at old, needs {head}")
+    finally:
+        async with engine.begin() as conn:
+            await conn.execute(text("update alembic_version set version_num = :v"), {"v": head})

@@ -30,10 +30,12 @@ from pydantic import BaseModel, Field
 from evals.golden_set import GOLDEN_DIR, GoldenVideo, load_references, load_videos
 from evals.metrics.board_recall import board_recall
 from evals.metrics.boundary_f1 import boundary_f1, predicted_boundaries
+from evals.metrics.duplicates import duplicate_rate
 from evals.metrics.faithfulness import faithfulness
 from evals.metrics.keypoint_recall import keypoint_recall
 from evals.metrics.qa_correctness import qa_correctness
 from evals.metrics.redundancy import redundancy
+from evals.metrics.sections import section_fragmentation
 from evals.metrics.wer_terms import term_error_rate, wer
 from lecnotes.adapters.cache.memory import InMemoryStageCache
 from lecnotes.adapters.cache.postgres_cache import PostgresStageCache
@@ -77,6 +79,8 @@ HIGHER_IS_BETTER = {
     "term_error_rate": False,
     "verify_dropped_rate": False,
     "redundancy": False,
+    "duplicate_rate": False,
+    "section_fragmentation": False,
     "qa_correctness": True,
     "qa_yield": True,
 }
@@ -192,12 +196,18 @@ async def run_eval(
             "faithfulness": None,
             "verify_dropped_rate": doc.verify.dropped_rate if doc.verify else None,
             "redundancy": redundancy(doc.units).rate,
+            "duplicate_rate": None,
+            "section_fragmentation": section_fragmentation(doc.units).fragmentation,
         }
         if doc.evidence is not None and doc.units:
             score = await faithfulness(
                 gateway, doc.units, doc.evidence, model=judge_model, options=JUDGE_OPTIONS
             )
             metrics["faithfulness"] = score.score
+            dups = await duplicate_rate(
+                gateway, doc.units, model=judge_model, options=JUDGE_OPTIONS
+            )
+            metrics["duplicate_rate"] = dups.rate
         if qa and doc.units:
             qset = await services.qa.generate(
                 job_id=job_id, video=meta, units=doc.units, level=QaLevel.MIXED, count=QA_COUNT

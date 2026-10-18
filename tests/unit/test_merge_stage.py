@@ -14,11 +14,10 @@ from lecnotes.domain import (
 from lecnotes.llm.gateway import LLMGateway
 from lecnotes.pipeline.context import RunContext
 from lecnotes.pipeline.stages.merge import (
-    GroupResult,
     MergedNote,
     MergeOutput,
     MergeStage,
-    candidate_groups,
+    apply_answer,
     core_concept,
     merge_spans,
 )
@@ -63,22 +62,9 @@ REAL_RUN = [
 ]
 
 
-def ids(groups: list[list[int]]) -> list[list[str]]:
-    return [[REAL_RUN[i].id for i in g] for g in groups]
-
-
 def test_core_concept_drops_generic_words_and_punctuation() -> None:
     assert core_concept("`enumerate()` Function (Direct Unpacking)") == "enumerate direct unpacking"
     assert core_concept("Basic List Iteration") == "list iteration"
-
-
-def test_candidate_groups_on_the_real_duplicates() -> None:
-    assert ids(candidate_groups(REAL_RUN)) == [
-        ["u1", "u7"],
-        ["u2", "u5", "u6"],
-        ["u3"],
-        ["u4", "u8"],
-    ]
 
 
 def test_merge_spans_joins_overlaps_and_keeps_separate_moments() -> None:
@@ -91,12 +77,16 @@ def test_merge_spans_joins_overlaps_and_keeps_separate_moments() -> None:
 
 
 def note(sources: list[str], concept: str, section: str) -> MergedNote:
+    merged = len(sources) > 1
     return MergedNote(
         source_ids=sources,
-        concept=concept,
-        explanation=f"Combined: {concept}.",
+        concept=concept if merged else "",
+        explanation=f"Combined: {concept}." if merged else "",
         section=section,
     )
+
+
+SECTIONS = ["Looping basics", "Iteration tools"]
 
 
 async def merge(units: list[KnowledgeUnit], output: MergeOutput) -> tuple[ExtractedUnits, FakeLLM]:
@@ -110,14 +100,13 @@ async def merge(units: list[KnowledgeUnit], output: MergeOutput) -> tuple[Extrac
 
 
 REAL_ANSWER = MergeOutput(
-    groups=[
-        GroupResult(group_id="g1", notes=[note(["u1", "u7"], "zip()", "Iteration tools")]),
-        GroupResult(
-            group_id="g2", notes=[note(["u2", "u5", "u6"], "enumerate()", "Iteration tools")]
-        ),
-        GroupResult(group_id="g3", notes=[note(["u3"], "ignored", "Looping basics")]),
-        GroupResult(group_id="g4", notes=[note(["u4", "u8"], "Manual indexing", "Looping basics")]),
-    ]
+    sections=SECTIONS,
+    notes=[
+        note(["u1", "u7"], "zip()", "Iteration tools"),
+        note(["u2", "u5", "u6"], "enumerate()", "Iteration tools"),
+        note(["u3"], "", "Looping basics"),
+        note(["u4", "u8"], "Manual indexing", "Looping basics"),
+    ],
 )
 
 
@@ -125,6 +114,9 @@ async def test_duplicates_merged_with_every_timestamp_kept() -> None:
     out, fake = await merge(REAL_RUN, REAL_ANSWER)
 
     assert len(fake.calls) == 1  # one call per video
+    prompt = "\n".join(str(m.content) for m in fake.calls[0].messages)
+    # the whole lecture in one view, with times
+    assert "[u5] (03:29) enumerate() function (Direct Unpacking)" in prompt
     by_id = {u.id: u for u in out.units}
     assert sorted(by_id) == ["u1", "u2", "u3", "u4"]
 
@@ -138,7 +130,7 @@ async def test_duplicates_merged_with_every_timestamp_kept() -> None:
     assert enum.evidence[0].segment_ids == ["s26", "s209", "s234"]
 
     assert {u.section for u in out.units} == {"Iteration tools", "Looping basics"}
-    assert by_id["u3"].explanation == "About Basic List Iteration."  # singleton text kept
+    assert by_id["u3"].explanation == "About Basic List Iteration."  # single note text kept
     assert by_id["u3"].concept == "Basic List Iteration"
     assert out.dropped[0] == "extract: earlier note"
     assert any("u2, u5, u6 -> u2" in d for d in out.dropped)
@@ -146,42 +138,64 @@ async def test_duplicates_merged_with_every_timestamp_kept() -> None:
     assert [u.id for u in out.units] == ["u1", "u3", "u4", "u2"]
 
 
-async def test_llm_may_split_a_candidate_group() -> None:
-    units = [unit("a", "Iteration", 10), unit("b", "List Iteration", 90)]
-    assert ids_of(candidate_groups(units), units) == [["a", "b"]]  # subset → candidate pair
+def test_differently_named_duplicates_can_merge() -> None:
+    """The case v1/v2 missed: names too different for fuzzy candidate groups."""
+    units = [
+        unit("a", "Define Success Criteria", 262),
+        unit("b", "Running the Model", 420),
+        unit("c", "Defining Task, Target, and Success Criteria", 546),
+    ]
     answer = MergeOutput(
-        groups=[
-            GroupResult(
-                group_id="g1",
-                notes=[note(["a"], "Iteration", "Loops"), note(["b"], "List iteration", "Loops")],
-            )
-        ]
+        sections=["Workflow"],
+        notes=[note(["a", "c"], "Success criteria", "Workflow"), note(["b"], "", "Workflow")],
     )
-    out, _ = await merge(units, answer)
-    assert [u.id for u in out.units] == ["a", "b"]
+    out, _ = apply_answer(units, answer)
+    assert [(u.id, u.concept) for u in out] == [
+        ("a", "Success criteria"),
+        ("b", "Running the Model"),
+    ]
+    assert [s.start_s for s in out[0].spans] == [262, 546]
 
 
-@pytest.mark.parametrize(
-    "notes",
-    [
-        [note(["u2", "u5"], "enumerate()", "S")],  # u6 missing
-        [note(["u2", "u5", "u6"], "x", "S"), note(["u6"], "y", "S")],  # u6 twice
-        [note(["u2", "u5", "u6", "u1"], "x", "S")],  # u1 from another group
-    ],
-)
-async def test_bad_partition_keeps_the_group_unmerged(notes: list[MergedNote]) -> None:
-    answer = MergeOutput(groups=[GroupResult(group_id="g2", notes=notes)])
-    out, _ = await merge(REAL_RUN, answer)
-    assert len(out.units) == len(REAL_RUN)  # nothing lost, nothing duplicated
-    assert any("g2 kept as is" in d for d in out.dropped)
-    assert any("g1 kept as is: no answer" in d for d in out.dropped)
+def test_unknown_reused_and_missing_ids_lose_nothing() -> None:
+    answer = MergeOutput(
+        sections=SECTIONS,
+        notes=[
+            note(["u2", "u5", "nope"], "enumerate()", "Iteration tools"),
+            note(["u5", "u6"], "again", "Iteration tools"),  # u5 reused → only u6 left
+            note(["ghost"], "", "Looping basics"),  # nothing valid → skipped
+        ],
+    )
+    out, log = apply_answer(REAL_RUN, answer)
+    ids = sorted(i for u in out for i in [u.id])
+    assert ids == ["u1", "u2", "u3", "u4", "u6", "u7", "u8"]  # u5 merged into u2, rest kept
+    assert "merge: note 1 ignored unknown/reused ids ['nope']" in log
+    assert "merge: note 2 ignored unknown/reused ids ['u5']" in log
+    assert any("not in answer" in line for line in log)
+    # left-out notes join the section of the nearest placed note, not their old one
+    assert {u.section for u in out} <= set(SECTIONS)
+
+
+def test_sections_snap_to_the_declared_list() -> None:
+    answer = MergeOutput(
+        sections=["LLM Application Evaluation Workflow", "Monitoring"],
+        notes=[
+            note(["u1"], "", "LLM Evaluation Workflow"),  # near-duplicate name
+            note(["u2"], "", "LLM Application Evaluation Workflow"),
+        ],
+    )
+    out, _ = apply_answer(REAL_RUN[:2], answer)
+    assert {u.section for u in out} == {"LLM Application Evaluation Workflow"}
+
+
+def test_prompt_v1_is_rejected() -> None:
+    fake = FakeLLM({})
+    gateway = LLMGateway(fake.factory, default_model="gemini-2.5-flash")
+    with pytest.raises(ValueError, match="prompt v2"):
+        MergeStage(gateway, model="gemini-2.5-flash", prompt_version=1)
 
 
 async def test_fewer_than_two_units_makes_no_call() -> None:
-    out, fake = await merge([REAL_RUN[0]], MergeOutput(groups=[]))
+    out, fake = await merge([REAL_RUN[0]], MergeOutput(sections=[], notes=[]))
     assert fake.calls == []
     assert out.units == [REAL_RUN[0]]
-
-
-def ids_of(groups: list[list[int]], units: list[KnowledgeUnit]) -> list[list[str]]:
-    return [[units[i].id for i in g] for g in groups]

@@ -77,7 +77,7 @@ class Settings(BaseSettings):
 
     # --- extraction ---
     extract_prompt_version: int = Field(default=1, ge=1)
-    merge_prompt_version: int = Field(default=1, ge=1)
+    merge_prompt_version: int = Field(default=2, ge=2)
     verify_prompt_version: int = Field(default=1, ge=1)
     qa_prompt_version: int = Field(default=1, ge=1)
 
