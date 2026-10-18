@@ -1,7 +1,10 @@
-"""The user's library: chapters (e.g. "Python") holding lessons (one lecture each).
+"""A user's library: chapters (e.g. "Python") holding lessons (one lecture each).
 
 A lesson points at the job that makes its notes. Jobs are shared — the same video + options
 is one job — so renaming, moving or deleting a lesson never touches notes or the cache.
+
+The repository is created for one account and every query is scoped to it, so one user can
+never read or change another's chapters or lessons, even with a guessed id.
 """
 
 from __future__ import annotations
@@ -10,7 +13,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime
 
-from sqlalchemy import delete, func, insert, select, update
+from sqlalchemy import ColumnElement, Select, delete, func, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
 from lecnotes.domain import JobStatus
@@ -45,8 +48,23 @@ class ChapterView:
 
 
 class LibraryRepository:
-    def __init__(self, engine: AsyncEngine) -> None:
+    def __init__(self, engine: AsyncEngine, user_id: uuid.UUID) -> None:
         self._engine = engine
+        self._user = user_id
+
+    def _mine(self) -> ColumnElement[bool]:
+        return ChapterRow.user_id == self._user
+
+    def _my_chapter_ids(self) -> Select[uuid.UUID]:
+        return select(ChapterRow.id).where(self._mine())
+
+    async def claim_unowned(self) -> int:
+        """Chapters made before sign-in existed become this account's (the owner's)."""
+        async with self._engine.begin() as conn:
+            done = await conn.execute(
+                update(ChapterRow).where(ChapterRow.user_id.is_(None)).values(user_id=self._user)
+            )
+        return done.rowcount
 
     # --- chapters -------------------------------------------------------------------------
 
@@ -54,10 +72,12 @@ class LibraryRepository:
         async with self._engine.connect() as conn:
             rows = (
                 await conn.execute(
-                    select(ChapterRow).order_by(ChapterRow.position, ChapterRow.created_at)
+                    select(ChapterRow)
+                    .where(self._mine())
+                    .order_by(ChapterRow.position, ChapterRow.created_at)
                 )
             ).all()
-            lessons = await _lessons(conn)
+            lessons = await _lessons(conn, self._mine())
         by_chapter: dict[uuid.UUID, list[LessonView]] = {}
         for lesson in lessons:
             by_chapter.setdefault(lesson.chapter_id, []).append(lesson)
@@ -73,11 +93,13 @@ class LibraryRepository:
 
     async def create_chapter(self, name: str) -> ChapterView:
         async with self._engine.begin() as conn:
-            position = await _next_position(conn, select(func.max(ChapterRow.position)))
+            position = await _next_position(
+                conn, select(func.max(ChapterRow.position)).where(self._mine())
+            )
             row = (
                 await conn.execute(
                     insert(ChapterRow)
-                    .values(id=uuid.uuid4(), name=name, position=position)
+                    .values(id=uuid.uuid4(), user_id=self._user, name=name, position=position)
                     .returning(ChapterRow)
                 )
             ).one()
@@ -86,14 +108,18 @@ class LibraryRepository:
     async def rename_chapter(self, chapter_id: uuid.UUID, name: str) -> bool:
         async with self._engine.begin() as conn:
             done = await conn.execute(
-                update(ChapterRow).where(ChapterRow.id == chapter_id).values(name=name)
+                update(ChapterRow)
+                .where(ChapterRow.id == chapter_id, self._mine())
+                .values(name=name)
             )
         return done.rowcount > 0
 
     async def delete_chapter(self, chapter_id: uuid.UUID) -> bool:
         """Deletes the chapter and its lessons (not their notes)."""
         async with self._engine.begin() as conn:
-            done = await conn.execute(delete(ChapterRow).where(ChapterRow.id == chapter_id))
+            done = await conn.execute(
+                delete(ChapterRow).where(ChapterRow.id == chapter_id, self._mine())
+            )
         return done.rowcount > 0
 
     # --- lessons --------------------------------------------------------------------------
@@ -101,6 +127,7 @@ class LibraryRepository:
     async def add_lesson(
         self, chapter_id: uuid.UUID, job_id: uuid.UUID, title: str | None = None
     ) -> LessonView:
+        """The caller checks that `chapter_id` is this account's (`chapter()`)."""
         lesson_id = uuid.uuid4()
         async with self._engine.begin() as conn:
             position = await _next_position(
@@ -122,7 +149,7 @@ class LibraryRepository:
 
     async def lesson(self, lesson_id: uuid.UUID) -> LessonView | None:
         async with self._engine.connect() as conn:
-            found = await _lessons(conn, LessonRow.id == lesson_id)
+            found = await _lessons(conn, LessonRow.id == lesson_id, self._mine())
         return found[0] if found else None
 
     async def update_lesson(
@@ -144,13 +171,21 @@ class LibraryRepository:
         if values:
             async with self._engine.begin() as conn:
                 await conn.execute(
-                    update(LessonRow).where(LessonRow.id == lesson_id).values(**values)
+                    update(LessonRow)
+                    .where(
+                        LessonRow.id == lesson_id, LessonRow.chapter_id.in_(self._my_chapter_ids())
+                    )
+                    .values(**values)
                 )
         return await self.lesson(lesson_id)
 
     async def delete_lesson(self, lesson_id: uuid.UUID) -> bool:
         async with self._engine.begin() as conn:
-            done = await conn.execute(delete(LessonRow).where(LessonRow.id == lesson_id))
+            done = await conn.execute(
+                delete(LessonRow).where(
+                    LessonRow.id == lesson_id, LessonRow.chapter_id.in_(self._my_chapter_ids())
+                )
+            )
         return done.rowcount > 0
 
 
@@ -173,6 +208,7 @@ async def _lessons(conn: AsyncConnection, *where: object) -> list[LessonView]:
             NotesRow.id.label("notes_id"),
             NotesRow.title.label("video_title"),
         )
+        .join(ChapterRow, ChapterRow.id == LessonRow.chapter_id)
         .join(JobRow, JobRow.id == LessonRow.job_id)
         .outerjoin(NotesRow, NotesRow.job_id == LessonRow.job_id)
         .where(*where)  # type: ignore[arg-type]

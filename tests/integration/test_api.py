@@ -16,14 +16,11 @@ from lecnotes.jobs.runner import JobRunner
 from lecnotes.storage.db import code_schema_revision
 from lecnotes.storage.repositories.notes import NotesRepository
 from tests.integration.conftest import ADMIN, Api
-from tests.pipeline_fakes import UNIT_ID, URL, VID, fake_services, make_settings
+from tests.pipeline_fakes import BROKEN_URL, UNIT_ID, URL, VID, fake_services, make_settings
 
 
 async def test_submit_poll_and_read_notes(api: Api) -> None:
-    created = await api.client.post("/v1/jobs", json={"url": URL, "subject_preset": "stem"})
-    assert created.status_code == 202
-    job = created.json()
-    assert created.headers["Location"] == f"/v1/jobs/{job['id']}"
+    job = await api.submit(URL, "stem")
     assert (job["status"], job["video_id"], job["subject_preset"]) == ("queued", VID, "stem")
     assert {s["state"] for s in job["stages"]} == {"pending"}
     assert [s["stage"] for s in job["stages"]][:2] == ["resolve", "perceive"]
@@ -51,7 +48,7 @@ async def test_submit_poll_and_read_notes(api: Api) -> None:
 
 
 async def test_practice_questions_are_grounded_and_cached(api: Api) -> None:
-    job = (await api.client.post("/v1/jobs", json={"url": URL})).json()
+    job = await api.submit(URL)
     await api.runner.run_once()
     notes_id = (await api.client.get(f"/v1/jobs/{job['id']}")).json()["notes_id"]
 
@@ -75,7 +72,7 @@ async def test_practice_questions_are_grounded_and_cached(api: Api) -> None:
 
 
 async def _finished_notes(api: Api) -> tuple[str, dict]:
-    job = (await api.client.post("/v1/jobs", json={"url": URL})).json()
+    job = await api.submit(URL)
     await api.runner.run_once()
     notes_id = (await api.client.get(f"/v1/jobs/{job['id']}")).json()["notes_id"]
     return job["id"], (await api.client.get(f"/v1/notes/{notes_id}")).json()
@@ -173,11 +170,10 @@ async def test_feedback_validation(api: Api) -> None:
     assert missing.status_code == 404
 
 
-async def test_same_video_returns_the_existing_job(api: Api) -> None:
-    first = await api.client.post("/v1/jobs", json={"url": URL})
-    again = await api.client.post("/v1/jobs", json={"url": f"https://youtu.be/{VID}?t=10"})
-    assert (first.status_code, again.status_code) == (202, 200)
-    assert again.json()["id"] == first.json()["id"]
+async def test_same_video_reuses_the_existing_job(api: Api) -> None:
+    first = await api.submit(URL)
+    again = await api.submit(f"https://youtu.be/{VID}?t=10")
+    assert again["id"] == first["id"]
 
 
 @pytest.mark.parametrize(
@@ -190,7 +186,8 @@ async def test_same_video_returns_the_existing_job(api: Api) -> None:
 async def test_bad_links_are_rejected_immediately(
     api: Api, url: str, code: str, phrase: str
 ) -> None:
-    response = await api.client.post("/v1/jobs", json={"url": url})
+    chapter = (await api.client.post("/v1/chapters", json={"name": "C"})).json()
+    response = await api.client.post(f"/v1/chapters/{chapter['id']}/lessons", json={"url": url})
     assert response.status_code == 422
     error = response.json()["error"]
     assert error["code"] == code
@@ -198,14 +195,27 @@ async def test_bad_links_are_rejected_immediately(
     assert error["request_id"] == response.headers["X-Request-ID"]
 
 
+async def test_unavailable_video_is_refused_before_queueing(api: Api) -> None:
+    """The length check resolves the video first, so a private/deleted one is a clear 422 at
+    once — not a failed job minutes later — and nothing is charged."""
+    chapter = (await api.client.post("/v1/chapters", json={"name": "C"})).json()
+    response = await api.client.post(
+        f"/v1/chapters/{chapter['id']}/lessons", json={"url": "https://youtu.be/aaaaaaaaaaa"}
+    )
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "VideoUnavailable"
+    assert "public videos" in response.json()["error"]["message"]
+    assert (await api.client.get("/v1/me")).json()["video_minutes_used"] == 0
+
+
 async def test_failed_job_reports_the_user_message(api: Api) -> None:
-    job = (await api.client.post("/v1/jobs", json={"url": "https://youtu.be/aaaaaaaaaaa"})).json()
+    job = await api.submit(BROKEN_URL)
     await api.runner.run_once()
     failed = (await api.client.get(f"/v1/jobs/{job['id']}")).json()
-    assert (failed["status"], failed["error_type"]) == ("failed", "VideoUnavailable")
-    assert "public videos" in failed["error"]
+    assert (failed["status"], failed["error_type"]) == ("failed", "PerceptionError")
+    assert "could not read this video" in failed["error"]
     assert failed["notes_id"] is None
-    assert {s["stage"]: s["state"] for s in failed["stages"]}["resolve"] == "failed"
+    assert {s["stage"]: s["state"] for s in failed["stages"]}["perceive"] == "failed"
 
 
 async def test_unknown_ids_are_404_with_json_errors(api: Api) -> None:
@@ -216,16 +226,16 @@ async def test_unknown_ids_are_404_with_json_errors(api: Api) -> None:
 
 
 async def test_admin_requires_the_token(api: Api) -> None:
-    job = (await api.client.post("/v1/jobs", json={"url": URL})).json()
+    job = await api.submit(URL)
     path = f"/v1/admin/jobs/{job['id']}/stages"
-    assert (await api.client.get(path)).status_code == 401
+    assert (await api.client.get(path)).status_code == 401  # a user token is not admin
     wrong = await api.client.get(path, headers={"Authorization": "Bearer nope"})
     assert wrong.status_code == 401
     assert (await api.client.get(path, headers=ADMIN)).status_code == 200
 
 
 async def test_admin_stage_history_and_rerun(api: Api) -> None:
-    job = (await api.client.post("/v1/jobs", json={"url": URL})).json()
+    job = await api.submit(URL)
     await api.runner.run_once()
 
     rerun = await api.client.post(f"/v1/admin/jobs/{job['id']}/rerun?from=extract", headers=ADMIN)
@@ -272,7 +282,8 @@ async def test_health_ready_request_id_and_openapi(api: Api) -> None:
     assert unsafe.headers["X-Request-ID"] != "bad id\n"
 
     spec = (await api.client.get("/openapi.json")).json()
-    assert {"/v1/jobs", "/v1/jobs/{job_id}", "/v1/notes/{notes_id}"} <= set(spec["paths"])
+    assert {"/v1/me", "/v1/jobs/{job_id}", "/v1/notes/{notes_id}"} <= set(spec["paths"])
+    assert "/v1/jobs" not in spec["paths"]  # anonymous submit removed: lessons only
 
 
 async def test_readyz_fails_when_a_migration_is_missing(api: Api, engine: AsyncEngine) -> None:

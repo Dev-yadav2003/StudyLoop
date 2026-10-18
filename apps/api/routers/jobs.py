@@ -3,12 +3,12 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Response
+from fastapi import APIRouter, HTTPException
 
 from apps.api.deps import Container
-from apps.api.schemas import ErrorOut, JobCreate, JobOut, StageProgress, StageState
+from apps.api.schemas import ErrorOut, JobOut, StageProgress, StageState
 from lecnotes.bootstrap import ApiContainer
-from lecnotes.domain import Job, JobOptions, JobStatus, StageRunStatus
+from lecnotes.domain import Job, JobStatus, StageRunStatus
 from lecnotes.domain.video import is_playlist_link, parse_video_id
 from lecnotes.errors import InvalidLink, PlaylistNotSupported
 from lecnotes.storage.repositories.stage_runs import latest_per_stage, runs_for_job
@@ -64,20 +64,6 @@ def video_id_from_link(url: str) -> str:
             raise PlaylistNotSupported(f"playlist link: {url!r}")
         raise InvalidLink(f"not a video link: {url!r}")
     return video_id
-
-
-@router.post("", response_model=JobOut, status_code=202, responses=ERRORS)
-async def create_job(body: JobCreate, c: Container, response: Response) -> JobOut:
-    """Queue notes for one video. Idempotent: the same video + options returns the existing
-    job (200) instead of creating a new one (202)."""
-    video_id = video_id_from_link(body.url)
-    job, created = await c.queue.enqueue(
-        body.url, video_id, JobOptions(subject_preset=body.subject_preset)
-    )
-    if not created:
-        response.status_code = 200
-    response.headers["Location"] = f"/v1/jobs/{job.id}"
-    return await job_out(c, job)
 
 
 @router.get("/{job_id}", response_model=JobOut, responses=ERRORS)

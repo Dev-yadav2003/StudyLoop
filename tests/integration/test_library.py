@@ -3,7 +3,7 @@
 from uuid import uuid4
 
 from tests.integration.conftest import Api
-from tests.pipeline_fakes import URL, VID
+from tests.pipeline_fakes import BROKEN_URL, URL, VID
 
 
 async def _chapter(api: Api, name: str = "Python") -> dict:
@@ -94,10 +94,10 @@ async def test_bad_links_and_retry(api: Api) -> None:
     missing = await api.client.post(f"/v1/chapters/{uuid4()}/lessons", json={"url": URL})
     assert missing.status_code == 404
 
-    lesson = (await api.client.post(path, json={"url": "https://youtu.be/aaaaaaaaaaa"})).json()
+    lesson = (await api.client.post(path, json={"url": BROKEN_URL})).json()
     not_failed = await api.client.post(f"/v1/lessons/{lesson['id']}/retry")
     assert not_failed.status_code == 409
-    await api.runner.run_once()  # unknown video → fails
+    await api.runner.run_once()  # resolves, but perception fails
     failed = (await api.client.get(f"/v1/lessons/{lesson['id']}")).json()
     assert failed["status"] == "failed"
 

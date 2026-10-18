@@ -30,11 +30,6 @@ class ErrorOut(BaseModel):
     error: ErrorBody
 
 
-class JobCreate(BaseModel):
-    url: str = Field(min_length=1, examples=["https://www.youtube.com/watch?v=Ek49cGiAOwo"])
-    subject_preset: SubjectPreset = SubjectPreset.GENERAL
-
-
 StageState = Literal["pending", "done", "cached", "failed"]
 
 
@@ -185,3 +180,12 @@ class LessonCreate(BaseModel):
 class LessonUpdate(BaseModel):
     title: Title | None = Field(default=None, description="null resets to the video title")
     chapter_id: UUID | None = Field(default=None, description="move to another chapter")
+
+
+class MeOut(BaseModel):
+    email: str
+    is_owner: bool
+    video_minutes_used: float
+    video_minutes_limit: float | None = Field(description="None = unlimited (owner)")
+    tokens_used: int
+    tokens_limit: int | None = Field(description="None = unlimited (owner)")

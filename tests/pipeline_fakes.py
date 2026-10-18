@@ -27,6 +27,12 @@ SAMPLE = Path(__file__).parent / "fixtures" / "perceive_output_sample.json"
 VID = "dQw4w9WgXcQ"
 URL = f"https://www.youtube.com/watch?v={VID}"
 VIDEO = VideoMeta(video_id=VID, title="Python Iteration Tools", duration_s=754)
+# Resolves (public, 4 min) but has no recorded perception: its job fails in the worker.
+BROKEN = VideoMeta(video_id="bbbbbbbbbbb", title="Unreadable lecture", duration_s=240)
+BROKEN_URL = f"https://youtu.be/{BROKEN.video_id}"
+# 30 min: longer than the 20-min guest allowance used in the API tests.
+LONG = VideoMeta(video_id="ccccccccccc", title="Long lecture", duration_s=1800)
+LONG_URL = f"https://youtu.be/{LONG.video_id}"
 UNIT_ID = f"{VID}-c001-u01"  # the one unit the default script yields
 CODE = 'names = ["ada", "alan"]\nfor i, name in enumerate(names):\n    print(i, name)'
 
@@ -85,7 +91,7 @@ def fake_services(
     fake_llm = llm or FakeLLM(dict(script or default_script()))
     services = assemble(
         settings=settings,
-        catalog=StaticCatalog([VIDEO]),
+        catalog=StaticCatalog([VIDEO, BROKEN, LONG]),
         perceiver=FakePerceiver({VID: to_perception_result(raw, VID).result}),
         gateway=LLMGateway(fake_llm.factory, default_model="gemini-2.5-flash", retry_backoff=False),
         cache=cache,

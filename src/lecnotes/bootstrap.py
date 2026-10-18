@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import uuid
 from collections.abc import AsyncIterator, Sequence
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
@@ -47,6 +48,7 @@ from lecnotes.storage.repositories.feedback import FeedbackRepository
 from lecnotes.storage.repositories.library import LibraryRepository
 from lecnotes.storage.repositories.notes import NotesRepository
 from lecnotes.storage.repositories.stage_runs import PostgresStageRunSink
+from lecnotes.storage.repositories.usage import UsageRepository
 
 
 @dataclass
@@ -54,6 +56,8 @@ class Services:
     pipeline: Pipeline
     qa: QaService
     editor: NotesEditor
+    catalog: VideoCatalog
+    """Resolves a link to its metadata (the API checks a video's length before queueing it)."""
     runs: InMemoryStageRunSink
     """In-memory copy of every StageRun of this process (CLI summary, debugging)."""
 
@@ -102,7 +106,7 @@ def assemble(
         QaStage(gateway, model=settings.text_model, prompt_version=settings.qa_prompt_version),
     )
     editor = NotesEditor(orchestrator, RenderStage())
-    return Services(pipeline=pipeline, qa=qa, editor=editor, runs=runs)
+    return Services(pipeline=pipeline, qa=qa, editor=editor, catalog=catalog, runs=runs)
 
 
 @asynccontextmanager
@@ -152,9 +156,13 @@ class ApiContainer:
     def feedback(self) -> FeedbackRepository:
         return FeedbackRepository(self.engine)
 
+    def library(self, user_id: uuid.UUID) -> LibraryRepository:
+        """The library of one account; every query is scoped to it."""
+        return LibraryRepository(self.engine, user_id)
+
     @property
-    def library(self) -> LibraryRepository:
-        return LibraryRepository(self.engine)
+    def usage(self) -> UsageRepository:
+        return UsageRepository(self.engine)
 
 
 @asynccontextmanager

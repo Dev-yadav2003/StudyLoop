@@ -3,10 +3,22 @@
 import createClient from "openapi-fetch";
 
 import type { components, paths } from "./api-types";
+import { accessToken } from "./supabase";
 
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
 
 export const api = createClient<paths>({ baseUrl: API_URL });
+
+// Every request carries the signed-in user's token (the API scopes data and limits by it).
+api.use({
+  async onRequest({ request }) {
+    const token = await accessToken();
+    if (token && !request.headers.has("Authorization")) {
+      request.headers.set("Authorization", `Bearer ${token}`);
+    }
+    return request;
+  },
+});
 
 type Schemas = components["schemas"];
 export type Job = Schemas["JobOut"];
@@ -14,7 +26,8 @@ export type Notes = Schemas["NotesOut"];
 export type Unit = Notes["units"][number];
 export type UnitEdit = Schemas["UnitEdit"];
 export type StageProgress = Schemas["StageProgress"];
-export type SubjectPreset = Schemas["JobCreate"]["subject_preset"];
+export type SubjectPreset = NonNullable<Schemas["LessonCreate"]["subject_preset"]>;
+export type Me = Schemas["MeOut"];
 export type QaLevel = NonNullable<Schemas["QaCreate"]["level"]>;
 export type QuestionSet = Schemas["QuestionSetOut"];
 export type Question = Schemas["QuestionOut"];

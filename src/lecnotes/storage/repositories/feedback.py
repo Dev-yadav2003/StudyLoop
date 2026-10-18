@@ -35,7 +35,12 @@ class FeedbackRepository:
         self._engine = engine
 
     async def add(
-        self, notes_id: uuid.UUID, feedback: Feedback, *, trace_id: str | None
+        self,
+        notes_id: uuid.UUID,
+        feedback: Feedback,
+        *,
+        trace_id: str | None,
+        user_id: uuid.UUID | None = None,
     ) -> tuple[int, datetime]:
         async with self._engine.begin() as conn:
             row = (
@@ -47,6 +52,7 @@ class FeedbackRepository:
                         rating=feedback.rating,
                         reason=feedback.reason,
                         trace_id=trace_id,
+                        user_id=user_id,
                     )
                     .returning(FeedbackRow.id, FeedbackRow.created_at)
                 )

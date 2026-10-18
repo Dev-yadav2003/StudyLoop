@@ -1,7 +1,7 @@
 """FastAPI application factory.
 
 create_app()                    production: wiring built in the lifespan (fail fast on config)
-create_app(container=...)       tests: inject a container built from fakes
+create_app(container=..., auth=...)  tests: inject fakes and a test-key token verifier
 """
 
 from __future__ import annotations
@@ -13,6 +13,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from apps.api import middleware
+from apps.api.auth import Authenticator, JwksAuthenticator
 from apps.api.routers import admin, health, jobs, library, notes
 from lecnotes import __version__
 from lecnotes.bootstrap import ApiContainer, api_container
@@ -22,7 +23,10 @@ from lecnotes.observability.tracing import init_tracing_from_settings, shutdown_
 
 
 def create_app(
-    container: ApiContainer | None = None, *, settings: Settings | None = None
+    container: ApiContainer | None = None,
+    *,
+    settings: Settings | None = None,
+    auth: Authenticator | None = None,
 ) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -35,6 +39,8 @@ def create_app(
         try:
             async with api_container(prod) as built:
                 app.state.container = built
+                if prod.supabase_url:  # unset = sign-in not configured (library answers 503)
+                    app.state.auth = JwksAuthenticator(prod.supabase_url)
                 yield
         finally:
             shutdown_tracing()
@@ -53,6 +59,7 @@ def create_app(
         allow_headers=["Content-Type", "Authorization", middleware.REQUEST_ID],
         expose_headers=[middleware.REQUEST_ID, "Location"],
     )
+    app.state.auth = auth
     if container is not None:
         app.state.container = container
     middleware.install(app)

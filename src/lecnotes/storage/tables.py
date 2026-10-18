@@ -201,6 +201,7 @@ class FeedbackRow(Base):
         ForeignKey("notes.id", ondelete="CASCADE"), index=True
     )
     unit_key: Mapped[str | None]
+    user_id: Mapped[uuid.UUID | None]
     rating: Mapped[int] = mapped_column(SmallInteger)
     reason: Mapped[str | None]
     trace_id: Mapped[str | None]
@@ -215,6 +216,8 @@ class ChapterRow(Base):
     __tablename__ = "chapters"
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID | None] = mapped_column(index=True)
+    """Supabase Auth user (`sub`). None = created before sign-in existed; the owner claims it."""
     name: Mapped[str]
     position: Mapped[int] = mapped_column(server_default="0")
     created_at: Mapped[datetime] = _created()
@@ -237,3 +240,21 @@ class LessonRow(Base):
     position: Mapped[int] = mapped_column(server_default="0")
     created_at: Mapped[datetime] = _created()
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
+
+
+class UsageRow(Base):
+    """What each account has used (step 10.1): one row per charge, so a guest's total is a
+    plain sum and every charge can be audited. Guests have a lifetime allowance."""
+
+    __tablename__ = "usage"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(index=True)
+    kind: Mapped[str]
+    ref: Mapped[str] = mapped_column(Text)
+    """video id for kind=video (charged once per video per account), notes id for kind=qa"""
+    video_minutes: Mapped[float] = mapped_column(server_default="0")
+    tokens: Mapped[int] = mapped_column(BigInteger, server_default="0")
+    created_at: Mapped[datetime] = _created()
+
+    __table_args__ = (CheckConstraint("kind IN ('video', 'qa')", name="kind"),)

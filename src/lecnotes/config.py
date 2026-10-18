@@ -12,7 +12,7 @@ Usage:
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import (
     BaseModel,
@@ -22,7 +22,7 @@ from pydantic import (
     ValidationInfo,
     field_validator,
 )
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 MediaResolution = Literal["low", "medium", "high"]
 
@@ -92,6 +92,23 @@ class Settings(BaseSettings):
         default=None, description="Bearer token for /v1/admin/*; unset = admin API disabled"
     )
     cors_origins: list[str] = ["http://localhost:3000"]
+
+    # --- sign-in + limits (Supabase Auth; tokens verified with the project's public keys) ---
+    supabase_url: str | None = Field(
+        default=None, description="https://<ref>.supabase.co; unset = sign-in not configured"
+    )
+    owner_emails: Annotated[list[str], NoDecode] = Field(
+        default_factory=list, description="Unlimited accounts: OWNER_EMAILS=a@x.com,b@y.com"
+    )
+    guest_video_minutes: float = Field(default=60, ge=0, description="Per account, in total")
+    guest_token_budget: int = Field(
+        default=1_000_000, ge=0, description="Per account, in total: 1 h of video + practice"
+    )
+    # Measured on real runs: 10.6k-14.8k tokens per video minute (all stages) → 15k charged.
+    tokens_per_video_minute: int = Field(default=15_000, gt=0)
+    # One practice-question set measured 5-10k tokens.
+    qa_token_cost: int = Field(default=8_000, ge=0)
+
     run_worker: bool = Field(default=True, description="Run the job runner inside the API")
     worker_poll_s: float = Field(default=2.0, gt=0)
     job_lease_s: float = Field(default=120.0, gt=0)
@@ -109,6 +126,20 @@ class Settings(BaseSettings):
         if not value.get_secret_value().strip():
             raise ValueError("must not be empty")
         return value
+
+    @field_validator("owner_emails", mode="before")
+    @classmethod
+    def _emails(cls, value: object) -> object:
+        if isinstance(value, str):
+            value = value.split(",")
+        if isinstance(value, list):
+            return [str(v).strip().lower() for v in value if str(v).strip()]
+        return value
+
+    @field_validator("supabase_url")
+    @classmethod
+    def _no_trailing_slash(cls, value: str | None) -> str | None:
+        return value.rstrip("/") if value else None
 
     @field_validator("chunk_max_s")
     @classmethod

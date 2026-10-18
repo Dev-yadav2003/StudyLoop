@@ -17,7 +17,7 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from apps.api.schemas import ErrorBody, ErrorOut
-from lecnotes.errors import InvalidLink, LecNotesError
+from lecnotes.errors import InvalidLink, LecNotesError, VideoUnavailable
 from lecnotes.observability.logging import bind_context, get_logger
 
 log = get_logger("lecnotes.api")
@@ -62,12 +62,18 @@ def install(app: FastAPI) -> None:
 
     @app.exception_handler(LecNotesError)
     async def domain_error(request: Request, exc: LecNotesError) -> JSONResponse:
-        status = 422 if isinstance(exc, InvalidLink) else 503 if exc.retryable else 500
+        # The user's input is at fault (bad link, private/deleted video) → 422, not a 500.
+        user_side = isinstance(exc, InvalidLink | VideoUnavailable)
+        status = 422 if user_side else 503 if exc.retryable else 500
         return error_response(status, type(exc).__name__, exc.user_message, request)
 
     @app.exception_handler(StarletteHTTPException)
     async def http_error(request: Request, exc: StarletteHTTPException) -> JSONResponse:
-        code = {401: "unauthorized", 403: "forbidden", 404: "not_found", 409: "conflict"}.get(
-            exc.status_code, "http_error"
-        )
+        code = {
+            401: "unauthorized",
+            403: "forbidden",
+            404: "not_found",
+            409: "conflict",
+            429: "quota_exceeded",
+        }.get(exc.status_code, "http_error")
         return error_response(exc.status_code, code, str(exc.detail), request)

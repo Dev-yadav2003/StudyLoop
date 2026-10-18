@@ -45,27 +45,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/jobs": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Create Job
-         * @description Queue notes for one video. Idempotent: the same video + options returns the existing
-         *     job (200) instead of creating a new one (202).
-         */
-        post: operations["create_job_v1_jobs_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/v1/jobs/{job_id}": {
         parameters: {
             query?: never;
@@ -83,6 +62,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Me
+         * @description The signed-in account and what it has used of its allowance.
+         */
+        get: operations["me_v1_me_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/chapters": {
         parameters: {
             query?: never;
@@ -92,7 +91,7 @@ export interface paths {
         };
         /**
          * List Chapters
-         * @description Every chapter with its lessons, in order.
+         * @description Every chapter of this account with its lessons, in order.
          */
         get: operations["list_chapters_v1_chapters_get"];
         put?: never;
@@ -136,8 +135,8 @@ export interface paths {
         put?: never;
         /**
          * Add Lesson
-         * @description Add a lecture to a chapter and queue its notes. A video already processed with the
-         *     same options reuses its notes at once.
+         * @description Add a lecture to a chapter and queue its notes. Guests are charged the video's length
+         *     against their allowance first (429 if it doesn't fit).
          */
         post: operations["add_lesson_v1_chapters__chapter_id__lessons_post"];
         delete?: never;
@@ -179,7 +178,7 @@ export interface paths {
         put?: never;
         /**
          * Retry Lesson
-         * @description Queue a failed lesson's video again (a failed job is never reused).
+         * @description Queue a failed lesson's video again (a failed job is never reused; not charged again).
          */
         post: operations["retry_lesson_v1_lessons__lesson_id__retry_post"];
         delete?: never;
@@ -494,16 +493,6 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
-        /** JobCreate */
-        JobCreate: {
-            /**
-             * Url
-             * @example https://www.youtube.com/watch?v=Ek49cGiAOwo
-             */
-            url: string;
-            /** @default general */
-            subject_preset: components["schemas"]["SubjectPreset"];
-        };
         /** JobOut */
         JobOut: {
             /**
@@ -640,6 +629,27 @@ export interface components {
              * @description move to another chapter
              */
             chapter_id?: string | null;
+        };
+        /** MeOut */
+        MeOut: {
+            /** Email */
+            email: string;
+            /** Is Owner */
+            is_owner: boolean;
+            /** Video Minutes Used */
+            video_minutes_used: number;
+            /**
+             * Video Minutes Limit
+             * @description None = unlimited (owner)
+             */
+            video_minutes_limit: number | null;
+            /** Tokens Used */
+            tokens_used: number;
+            /**
+             * Tokens Limit
+             * @description None = unlimited (owner)
+             */
+            tokens_limit: number | null;
         };
         /** NotesOut */
         NotesOut: {
@@ -905,48 +915,6 @@ export interface operations {
             };
         };
     };
-    create_job_v1_jobs_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["JobCreate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            202: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["JobOut"];
-                };
-            };
-            /** @description Not Found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-            /** @description Unprocessable Entity */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-        };
-    };
     get_job_v1_jobs__job_id__get: {
         parameters: {
             query?: never;
@@ -987,10 +955,61 @@ export interface operations {
             };
         };
     };
+    me_v1_me_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
     list_chapters_v1_chapters_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1005,12 +1024,41 @@ export interface operations {
                     "application/json": components["schemas"]["ChapterOut"][];
                 };
             };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
         };
     };
     create_chapter_v1_chapters_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1027,6 +1075,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ChapterOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
                 };
             };
             /** @description Not Found */
@@ -1052,7 +1109,9 @@ export interface operations {
     delete_chapter_v1_chapters__chapter_id__delete: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path: {
                 chapter_id: string;
             };
@@ -1066,6 +1125,15 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
             };
             /** @description Not Found */
             404: {
@@ -1090,7 +1158,9 @@ export interface operations {
     rename_chapter_v1_chapters__chapter_id__patch: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path: {
                 chapter_id: string;
             };
@@ -1109,6 +1179,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ChapterOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
                 };
             };
             /** @description Not Found */
@@ -1134,7 +1213,9 @@ export interface operations {
     add_lesson_v1_chapters__chapter_id__lessons_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path: {
                 chapter_id: string;
             };
@@ -1155,6 +1236,15 @@ export interface operations {
                     "application/json": components["schemas"]["LessonOut"];
                 };
             };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
             /** @description Not Found */
             404: {
                 headers: {
@@ -1173,12 +1263,23 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorOut"];
                 };
             };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
         };
     };
     get_lesson_v1_lessons__lesson_id__get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path: {
                 lesson_id: string;
             };
@@ -1193,6 +1294,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LessonOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
                 };
             };
             /** @description Not Found */
@@ -1218,7 +1328,9 @@ export interface operations {
     delete_lesson_v1_lessons__lesson_id__delete: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path: {
                 lesson_id: string;
             };
@@ -1232,6 +1344,15 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
             };
             /** @description Not Found */
             404: {
@@ -1256,7 +1377,9 @@ export interface operations {
     update_lesson_v1_lessons__lesson_id__patch: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path: {
                 lesson_id: string;
             };
@@ -1275,6 +1398,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LessonOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
                 };
             };
             /** @description Not Found */
@@ -1300,7 +1432,9 @@ export interface operations {
     retry_lesson_v1_lessons__lesson_id__retry_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path: {
                 lesson_id: string;
             };
@@ -1315,6 +1449,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LessonOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
                 };
             };
             /** @description Not Found */
@@ -1389,7 +1532,9 @@ export interface operations {
     edit_unit_v1_notes__notes_id__units__unit_id__patch: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path: {
                 notes_id: string;
                 unit_id: string;
@@ -1486,7 +1631,9 @@ export interface operations {
     practice_questions_v1_notes__notes_id__qa_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path: {
                 notes_id: string;
             };
@@ -1539,7 +1686,9 @@ export interface operations {
     give_feedback_v1_notes__notes_id__feedback_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path: {
                 notes_id: string;
             };

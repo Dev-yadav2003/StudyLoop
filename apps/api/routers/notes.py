@@ -6,7 +6,8 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import PlainTextResponse
 
-from apps.api.deps import Container
+from apps.api.deps import Container, CurrentUser, Owner
+from apps.api.quota import charge_questions
 from apps.api.schemas import (
     ErrorOut,
     FeedbackOut,
@@ -58,7 +59,9 @@ async def get_notes(notes_id: UUID, c: Container) -> NotesOut:
     response_model=NotesOut,
     responses={404: {"model": ErrorOut}, 409: {"model": ErrorOut}, 422: {"model": ErrorOut}},
 )
-async def edit_unit(notes_id: UUID, unit_id: str, edit: UnitEdit, c: Container) -> NotesOut:
+async def edit_unit(
+    notes_id: UUID, unit_id: str, edit: UnitEdit, c: Container, _: Owner
+) -> NotesOut:
     """Correct one unit's content; the notes are re-rendered (no reprocessing, no AI call).
     Where it was taught and what it cites can't be edited. Note: an admin rerun of the job
     replaces the notes, edits included."""
@@ -97,13 +100,16 @@ async def export_notes(
     response_model=QuestionSetOut,
     responses={404: {"model": ErrorOut}, 422: {"model": ErrorOut}, 503: {"model": ErrorOut}},
 )
-async def practice_questions(notes_id: UUID, body: QaCreate, c: Container) -> QuestionSetOut:
+async def practice_questions(
+    notes_id: UUID, body: QaCreate, c: Container, user: CurrentUser
+) -> QuestionSetOut:
     """Grounded practice questions. Each cites the notes its answer comes from and links to
     where they are taught. The same request again is served from the cache."""
     stored = await _load(c, notes_id)
     doc = stored.document
     if not doc.units:
         raise HTTPException(422, "These notes have no content to ask questions about.")
+    await charge_questions(c, user, str(stored.id))
     qset = await c.services.qa.generate(
         job_id=stored.job_id, video=doc.video, units=doc.units, level=body.level, count=body.count
     )
@@ -137,14 +143,18 @@ async def practice_questions(notes_id: UUID, body: QaCreate, c: Container) -> Qu
     status_code=201,
     responses={404: {"model": ErrorOut}, 422: {"model": ErrorOut}},
 )
-async def give_feedback(notes_id: UUID, body: Feedback, c: Container) -> FeedbackOut:
+async def give_feedback(
+    notes_id: UUID, body: Feedback, c: Container, user: CurrentUser
+) -> FeedbackOut:
     """Thumbs up/down (+ optional reason) on the notes, or on one unit with `unit_id`. Stored,
     and attached to the job's Langfuse trace as a `user_feedback` score."""
     stored = await _load(c, notes_id)
     if body.unit_id is not None and body.unit_id not in {u.id for u in stored.document.units}:
         raise HTTPException(404, "Unit not found in these notes.")
     trace_id = await latest_trace_id(c.engine, stored.job_id)
-    feedback_id, created_at = await c.feedback.add(stored.id, body, trace_id=trace_id)
+    feedback_id, created_at = await c.feedback.add(
+        stored.id, body, trace_id=trace_id, user_id=user.id
+    )
     scored = score(
         "user_feedback",
         body.rating,

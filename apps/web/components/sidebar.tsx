@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type KeyboardEvent } from "react";
 
@@ -24,6 +25,7 @@ import {
   TrashIcon,
 } from "./icons";
 import { ThemeToggle } from "./theme-toggle";
+import { signOut, useMe, useSession } from "./auth";
 
 /** Library navigation: chapters (folders) with their lessons, all renamable in place. */
 export function Sidebar({ onNavigate }: { onNavigate: () => void }) {
@@ -110,10 +112,7 @@ export function Sidebar({ onNavigate }: { onNavigate: () => void }) {
         ))}
       </nav>
 
-      <div className="sidebar-foot">
-        <span>Your lecture library</span>
-        <ThemeToggle />
-      </div>
+      <Account />
     </aside>
   );
 }
@@ -323,5 +322,42 @@ export function InlineInput({
       onBlur={() => finish(value)}
       onClick={(e) => e.stopPropagation()}
     />
+  );
+}
+
+/** Who is signed in, what they have left (guests), theme and sign-out. */
+function Account() {
+  const session = useSession();
+  const me = useMe().data;
+  const qc = useQueryClient();
+  const limit = me?.video_minutes_limit;
+  const pct = limit ? Math.min(100, ((me?.video_minutes_used ?? 0) / limit) * 100) : 0;
+
+  return (
+    <div className="sidebar-foot account">
+      <div className="account-row">
+        <span className="avatar">{(session?.user.email ?? "?").slice(0, 1).toUpperCase()}</span>
+        <span className="account-email" title={session?.user.email}>
+          {session?.user.email}
+        </span>
+        <ThemeToggle />
+      </div>
+      {me &&
+        (me.is_owner ? (
+          <span className="badge accent">Owner · unlimited</span>
+        ) : (
+          <div className="allowance" title="Free accounts: 1 hour of lecture video in total">
+            <div className="allowance-bar">
+              <span style={{ width: `${pct}%` }} />
+            </div>
+            <span>
+              {Math.round(me.video_minutes_used)} of {limit} min of video used
+            </span>
+          </div>
+        ))}
+      <button type="button" className="btn quiet sm" onClick={() => signOut(() => qc.clear())}>
+        Sign out
+      </button>
+    </div>
   );
 }

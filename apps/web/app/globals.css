@@ -1679,3 +1679,133 @@ h3 {
     font-size: 15.5px;
   }
 }
+
+/* ==========================================================================
+   Sign-in + account
+   ========================================================================== */
+
+.auth-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+  background:
+    radial-gradient(circle at 20% 10%, var(--accent-soft), transparent 45%),
+    radial-gradient(circle at 85% 90%, var(--accent-soft), transparent 40%),
+    var(--bg);
+}
+
+.auth-card {
+  width: min(420px, 100%);
+  padding: 32px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+  text-align: center;
+}
+
+.auth-card h1 {
+  margin: 16px 0 6px;
+  font-size: 1.6rem;
+}
+
+.auth-card > p {
+  margin: 0 0 24px;
+}
+
+.auth-mark {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  margin: 0 auto;
+}
+
+.auth-form {
+  display: grid;
+  gap: 14px;
+  text-align: left;
+}
+
+.auth-note {
+  margin: 0;
+  font-size: 12.5px;
+  text-align: center;
+}
+
+.auth-sent {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  border-radius: var(--radius);
+  background: var(--ok-soft);
+  color: var(--ok);
+  text-align: left;
+}
+
+.auth-sent strong {
+  color: var(--text);
+}
+
+.auth-sent p {
+  margin: 4px 0 8px;
+  font-size: 13.5px;
+}
+
+.account {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.account-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.avatar {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.account-email {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-2);
+}
+
+.allowance {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.allowance-bar {
+  height: 5px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.allowance-bar > span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), #a78bfa);
+}
+
+.account .btn.quiet {
+  justify-content: flex-start;
+  padding: 0 4px;
+}

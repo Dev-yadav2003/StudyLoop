@@ -62,6 +62,7 @@ export function useDeleteChapter() {
 }
 
 export function useAddLesson() {
+  const qc = useQueryClient();
   const invalidate = useInvalidate();
   return useMutation({
     mutationFn: (args: { chapterId: string; url: string; preset: SubjectPreset; title?: string }) =>
@@ -71,7 +72,10 @@ export function useAddLesson() {
           body: { url: args.url, subject_preset: args.preset, title: args.title || null },
         }),
       ),
-    onSuccess: invalidate,
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["me"] });
+      return invalidate();
+    },
   });
 }
 

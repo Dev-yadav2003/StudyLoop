@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { useMe } from "@/components/auth";
 import { NotesFeedback } from "@/components/feedback";
 import {
   BookIcon,
@@ -39,6 +40,7 @@ export default function LessonPage() {
   const chapters = useChapters();
   const update = useUpdateLesson();
   const retry = useRetryLesson();
+  const me = useMe().data;
 
   const lesson = useQuery({
     queryKey: ["lesson", id],
@@ -179,7 +181,7 @@ export default function LessonPage() {
           </div>
           {tab === "notes" ? (
             <>
-              <NotesView notes={notes.data} />
+              <NotesView notes={notes.data} canEdit={Boolean(me?.is_owner)} />
               <NotesFeedback notesId={notes.data.id} />
             </>
           ) : (

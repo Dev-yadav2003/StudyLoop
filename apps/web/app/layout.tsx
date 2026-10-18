@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import type { ReactNode } from "react";
 
 import { AppShell } from "@/components/app-shell";
+import { AuthGate } from "@/components/auth";
 import { THEME_SCRIPT } from "@/components/theme-toggle";
 
 import "./globals.css";
@@ -23,7 +24,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       </head>
       <body>
         <Providers>
-          <AppShell>{children}</AppShell>
+          <AuthGate>
+            <AppShell>{children}</AppShell>
+          </AuthGate>
         </Providers>
       </body>
     </html>

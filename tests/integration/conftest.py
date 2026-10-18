@@ -5,11 +5,13 @@ from __future__ import annotations
 import asyncio
 import os
 import sys
+import time
 import uuid
 from collections.abc import AsyncIterator, Callable, Iterator, Mapping
 from dataclasses import dataclass
 
 import httpx
+import jwt
 import psycopg
 import pytest
 from alembic import command
@@ -19,6 +21,7 @@ from sqlalchemy import make_url, text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
 from apps.api.app import create_app
+from apps.api.auth import StaticKeyAuthenticator
 from lecnotes.adapters.cache.postgres_cache import PostgresStageCache
 from lecnotes.bootstrap import ApiContainer
 from lecnotes.jobs.queue import JobQueue
@@ -99,23 +102,63 @@ async def session(engine: AsyncEngine) -> AsyncIterator[AsyncSession]:
 # --- the HTTP API over real Postgres, fakes only at the edges ---------------------------------
 
 ADMIN = {"Authorization": "Bearer s3cret"}
+TEST_JWT_KEY = "test-signing-key-at-least-32-bytes-long!"
+OWNER_EMAIL = "owner@example.com"
+GUEST_MINUTES = 20.0  # the fake video is 12.6 min: one fits, a second doesn't
+
+
+def bearer(email: str, user_id: uuid.UUID | None = None, **claims: object) -> dict[str, str]:
+    """Headers of a signed-in user (a Supabase-shaped token signed with the test key)."""
+    payload = {
+        "sub": str(user_id or uuid.uuid5(uuid.NAMESPACE_URL, email)),
+        "email": email,
+        "aud": "authenticated",
+        "exp": int(time.time()) + 3600,
+    } | claims
+    return {"Authorization": f"Bearer {jwt.encode(payload, TEST_JWT_KEY, algorithm='HS256')}"}
 
 
 @dataclass
 class Api:
     client: httpx.AsyncClient
+    """Signed in as the owner by default; pass `headers=bearer(...)` to act as someone else."""
     runner: JobRunner
+
+    async def submit(
+        self, url: str, preset: str = "general", headers: dict[str, str] | None = None
+    ) -> dict:
+        """Add a lesson the way the UI does (chapter → lesson); returns its job."""
+        chapter = await self.client.post("/v1/chapters", json={"name": "Tests"}, headers=headers)
+        assert chapter.status_code == 201, chapter.text
+        lesson = await self.client.post(
+            f"/v1/chapters/{chapter.json()['id']}/lessons",
+            json={"url": url, "subject_preset": preset},
+            headers=headers,
+        )
+        assert lesson.status_code == 201, lesson.text
+        return (await self.client.get(f"/v1/jobs/{lesson.json()['job_id']}")).json()
 
 
 @pytest.fixture
 async def api(engine: AsyncEngine, monkeypatch: pytest.MonkeyPatch) -> AsyncIterator[Api]:
-    settings = make_settings(monkeypatch, admin_token=SecretStr("s3cret"), run_worker=False)
+    settings = make_settings(
+        monkeypatch,
+        admin_token=SecretStr("s3cret"),
+        run_worker=False,
+        owner_emails=[OWNER_EMAIL],
+        guest_video_minutes=GUEST_MINUTES,
+    )
     services, _ = fake_services(
         settings, PostgresStageCache(engine), sinks=[PostgresStageRunSink(engine)]
     )
     queue, notes = JobQueue(engine), NotesRepository(engine)
     runner = JobRunner(queue, services.pipeline, notes, owner="test")
-    app = create_app(ApiContainer(settings, engine, queue, notes, services, runner))
+    app = create_app(
+        ApiContainer(settings, engine, queue, notes, services, runner),
+        auth=StaticKeyAuthenticator(TEST_JWT_KEY),
+    )
     transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://test", headers=bearer(OWNER_EMAIL)
+    ) as client:
         yield Api(client, runner)

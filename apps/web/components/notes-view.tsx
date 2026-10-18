@@ -46,7 +46,7 @@ export function Markdown({ children }: { children: string }) {
   );
 }
 
-export function NotesView({ notes }: { notes: Notes }) {
+export function NotesView({ notes, canEdit = false }: { notes: Notes; canEdit?: boolean }) {
   const sections = sectionsOf(notes.units);
 
   if (notes.units.length === 0) {
@@ -74,6 +74,7 @@ export function NotesView({ notes }: { notes: Notes }) {
                 videoId={notes.video.video_id}
                 unit={unit}
                 edited={notes.edited_units.includes(unit.id)}
+                canEdit={canEdit}
               />
             ))}
           </section>
@@ -107,11 +108,13 @@ function UnitCard({
   videoId,
   unit,
   edited,
+  canEdit,
 }: {
   notesId: string;
   videoId: string;
   unit: Unit;
   edited: boolean;
+  canEdit: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [primary, ...others] = unit.spans;
@@ -124,7 +127,7 @@ function UnitCard({
           {unit.concept}
           {edited && <span className="badge accent edited-tag">edited</span>}
         </h3>
-        {!editing && (
+        {canEdit && !editing && (
           <div className="unit-tools">
             <button
               type="button"
