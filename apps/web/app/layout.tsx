@@ -1,27 +1,30 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { Inter } from "next/font/google";
 import type { ReactNode } from "react";
+
+import { AppShell } from "@/components/app-shell";
+import { THEME_SCRIPT } from "@/components/theme-toggle";
 
 import "./globals.css";
 import { Providers } from "./providers";
 
+const inter = Inter({ subsets: ["latin"], display: "swap", variable: "--font-inter" });
+
 export const metadata: Metadata = {
-  title: "Lecture Notes",
-  description: "Turn a YouTube lecture into faithful, timestamped study notes.",
+  title: "LecNotes",
+  description: "Turn YouTube lectures into clear, timestamped study notes — organised in chapters.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className={inter.variable} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
       <body>
-        <header className="site-header">
-          <Link href="/" className="brand">
-            Lecture Notes
-          </Link>
-        </header>
-        <main className="container">
-          <Providers>{children}</Providers>
-        </main>
+        <Providers>
+          <AppShell>{children}</AppShell>
+        </Providers>
       </body>
     </html>
   );

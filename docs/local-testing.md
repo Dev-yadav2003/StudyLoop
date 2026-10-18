@@ -7,7 +7,7 @@ Langfuse). Deploying to Render/Vercel comes later.
 
 ```bash
 uv sync                          # Python deps
-uv run alembic upgrade head      # Supabase schema → latest (0007)
+uv run alembic upgrade head      # Supabase schema → latest (0008)
 cd apps/web && npm install       # frontend deps (Node ≥ 20.9)
 cp .env.example .env.local       # NEXT_PUBLIC_API_URL=http://127.0.0.1:8000
 ```
@@ -18,7 +18,7 @@ cp .env.example .env.local       # NEXT_PUBLIC_API_URL=http://127.0.0.1:8000
 ## 1. Automated checks (≈ 30 s, no network)
 
 ```bash
-uv run ruff check . && uv run pyright && uv run pytest     # 411 tests incl. real Postgres
+uv run ruff check . && uv run pyright && uv run pytest     # 425 tests incl. real Postgres
 cd apps/web && npm run typecheck && npm run build
 ```
 
@@ -37,24 +37,29 @@ Check the API first:
 
 ## 3. Happy path in the browser
 
-1. Open http://localhost:3000, paste e.g. `https://www.youtube.com/watch?v=Ek49cGiAOwo`,
-   pick **STEM**, click **Make notes**.
-2. You land on `/jobs/<id>`: stages tick from *waiting* to *done* every few seconds
-   (a 5-10 min lecture takes ~2-4 min; "Watching the video" and "Writing notes" are the slow
-   ones).
-3. When done it opens `/notes/<id>`: sections, code blocks, `[mm:ss]` links (open YouTube at
-   that moment in a new tab), **Copy Markdown**, **Download .md**.
-4. Submit the same video again (even as `youtu.be/...`): you go straight to the same job — no
-   new work (idempotent).
-5. **Practice questions** (under the notes): pick a level and count, **Generate**. Each
-   answer is behind *Show answer*, with links to where it is taught. Generating again with the
-   same settings is instant (cached).
-6. **Edit notes**: fix a concept name or explanation, **Save** → the notes re-render at once
-   (no AI call; an *edited* tag marks the unit). Reload: the edit is still there. Timestamps
-   and sources can't be edited. An admin `rerun` replaces the notes, edits included.
-7. **Feedback** (bottom of the notes): 👍 sends at once; 👎 asks what was wrong, then
-   **Send**. It lands in Supabase (`feedback` table) and in Langfuse as a `user_feedback`
-   score on the job's trace.
+1. **Chapters** (left sidebar): **+** next to *Chapters* → type a name (e.g. `Python`),
+   Enter. Hover a chapter → **+** (add a lesson to it), ✏️ (rename), 🗑 (delete it and its
+   lessons — the notes themselves are kept).
+2. **New lesson**: paste e.g. `https://www.youtube.com/watch?v=Ek49cGiAOwo`, pick the chapter
+   (or *New chapter…*), optionally a lesson name, the subject type (General / STEM / Theory),
+   **Make notes**.
+3. You land on the lesson: a progress bar and each step ticking off (a 5-10 min lecture takes
+   ~2-4 min). The sidebar dot pulses while it works, turns green when done, red if it failed
+   (**Try again** on the lesson page).
+4. **Notes** tab: numbered sections, one card per concept (definition, bullets, code,
+   examples), ▶ `mm:ss` chips open YouTube at that moment, *On this page* outline on wide
+   screens, **Copy Markdown**, **Download**. No "On the board" dumps.
+5. Click the lesson title (or ✏️ in the sidebar) to rename it; Enter saves, Esc cancels.
+6. **Practice** tab: pick a level and count, **Generate questions**. *Show answer* reveals it
+   with where it's taught; mark **Got it** / **Review this** — the score counts up. The same
+   settings again are instant (cached).
+7. **Edit a note**: hover a concept card → ✏️ → change it → **Save**: the notes re-render at
+   once (no AI call; an *edited* tag appears). Timestamps and sources can't be edited. An admin
+   `rerun` replaces the notes, edits included.
+8. **Feedback** (bottom of the notes): 👍 sends at once; 👎 asks what was wrong. It lands in
+   Supabase (`feedback`) and in Langfuse as a `user_feedback` score on the job's trace.
+9. Add the same video to another chapter: it reuses the finished notes instantly.
+10. Theme: the sun/moon at the bottom of the sidebar. On a phone, ☰ opens the library.
 
 ## 4. Things worth trying
 

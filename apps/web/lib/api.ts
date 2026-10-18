@@ -8,14 +8,18 @@ export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000
 
 export const api = createClient<paths>({ baseUrl: API_URL });
 
-export type Job = components["schemas"]["JobOut"];
-export type Notes = components["schemas"]["NotesOut"];
+type Schemas = components["schemas"];
+export type Job = Schemas["JobOut"];
+export type Notes = Schemas["NotesOut"];
 export type Unit = Notes["units"][number];
-export type UnitEdit = components["schemas"]["UnitEdit"];
-export type StageProgress = components["schemas"]["StageProgress"];
-export type SubjectPreset = components["schemas"]["JobCreate"]["subject_preset"];
-export type QaLevel = NonNullable<components["schemas"]["QaCreate"]["level"]>;
-export type QuestionSet = components["schemas"]["QuestionSetOut"];
+export type UnitEdit = Schemas["UnitEdit"];
+export type StageProgress = Schemas["StageProgress"];
+export type SubjectPreset = Schemas["JobCreate"]["subject_preset"];
+export type QaLevel = NonNullable<Schemas["QaCreate"]["level"]>;
+export type QuestionSet = Schemas["QuestionSetOut"];
+export type Question = Schemas["QuestionOut"];
+export type Chapter = Schemas["ChapterOut"];
+export type Lesson = Schemas["LessonOut"];
 
 /** The API's uniform error body ({"error": {code, message, request_id}}) or a network error. */
 export class ApiError extends Error {
@@ -37,4 +41,32 @@ export function toApiError(error: unknown, status: number | null): ApiError {
   return new ApiError(detail ?? "Unexpected response from the server.", "error", status);
 }
 
+/** Unwrap an openapi-fetch result: the data, or a thrown ApiError. */
+export async function call<T>(
+  request: Promise<{ data?: T; error?: unknown; response: Response }>,
+): Promise<T> {
+  const { data, error, response } = await request;
+  if (error !== undefined || data === undefined) throw toApiError(error, response.status);
+  return data;
+}
+
+/** Same as `call` for endpoints that answer 204 No Content. */
+export async function callEmpty(
+  request: Promise<{ error?: unknown; response: Response }>,
+): Promise<void> {
+  const { error, response } = await request;
+  if (!response.ok) throw toApiError(error, response.status);
+}
+
 export const exportUrl = (notesId: string) => `${API_URL}/v1/notes/${notesId}/export?format=md`;
+
+export function formatTime(seconds: number): string {
+  const s = Math.floor(seconds);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return h > 0 ? `${h}:${pad(m)}:${pad(s % 60)}` : `${pad(m)}:${pad(s % 60)}`;
+}
+
+export const youtubeAt = (videoId: string, seconds: number) =>
+  `https://youtu.be/${videoId}?t=${Math.floor(seconds)}`;

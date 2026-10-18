@@ -128,8 +128,8 @@ def test_primary_link_first_then_other_moments() -> None:
     )
     md = render_markdown(VIDEO, [taught])
     assert (
-        f"### enumerate()\n\n<sub>▶ [03:29](https://youtu.be/{VID}?t=209) "
-        f"· also [00:26](https://youtu.be/{VID}?t=26)</sub>"
+        f"### enumerate()\n\n*▶ [03:29](https://youtu.be/{VID}?t=209) "
+        f"· also [00:26](https://youtu.be/{VID}?t=26)*"
     ) in md
 
 

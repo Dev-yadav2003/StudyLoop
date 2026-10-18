@@ -176,3 +176,18 @@ async def test_unknown_status_row_is_not_leased(engine: AsyncEngine) -> None:
         await conn.execute(update(JobRow).where(JobRow.id == job.id).values(status="succeeded"))
         assert (await conn.execute(text("select count(*) from jobs"))).scalar_one() == 1
     assert await q.lease("w1") is None
+
+
+async def test_jobs_stored_with_since_removed_options_still_load(engine: AsyncEngine) -> None:
+    """Rows written before `generate_questions` was removed made every read of them a 500."""
+    queue = JobQueue(engine)
+    job, _ = await queue.enqueue(f"https://youtu.be/{VID}", VID, JobOptions())
+    async with engine.begin() as conn:
+        await conn.execute(
+            update(JobRow)
+            .where(JobRow.id == job.id)
+            .values(options={"subject_preset": "stem", "generate_questions": False})
+        )
+    loaded = await queue.get(job.id)
+    assert loaded is not None
+    assert loaded.options == JobOptions(subject_preset=SubjectPreset.STEM)

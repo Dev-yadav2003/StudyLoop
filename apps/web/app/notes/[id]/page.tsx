@@ -1,82 +1,35 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useState } from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 
-import { api, exportUrl, toApiError } from "@/lib/api";
+import { NotesFeedback } from "@/components/feedback";
+import { NotesView } from "@/components/notes-view";
+import { Practice } from "@/components/practice";
+import { api, call } from "@/lib/api";
 
-import { EditUnits } from "./edit-units";
-import { NotesFeedback } from "./feedback";
-import { PracticeQuestions } from "./practice";
-
+/** Notes by id (older links, and notes not added to a chapter). */
 export default function NotesPage() {
   const { id } = useParams<{ id: string }>();
-  const [copied, setCopied] = useState(false);
-  const [editing, setEditing] = useState(false);
-
   const notes = useQuery({
     queryKey: ["notes", id],
-    queryFn: async () => {
-      const { data, error, response } = await api.GET("/v1/notes/{notes_id}", {
-        params: { path: { notes_id: id } },
-      });
-      if (error || !data) throw toApiError(error, response.status);
-      return data;
-    },
+    queryFn: () => call(api.GET("/v1/notes/{notes_id}", { params: { path: { notes_id: id } } })),
   });
 
   if (notes.isError) return <p className="alert error">{notes.error.message}</p>;
-  if (!notes.data) return <p>Loading…</p>;
-
-  const copy = async () => {
-    await navigator.clipboard.writeText(notes.data.markdown);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+  if (!notes.data) return <p className="muted">Loading…</p>;
 
   return (
-    <article>
-      <div className="actions">
-        <button type="button" onClick={copy}>
-          {copied ? "Copied" : "Copy Markdown"}
-        </button>
-        <a className="button secondary" href={exportUrl(notes.data.id)} download>
-          Download .md
-        </a>
-        {notes.data.units.length > 0 && (
-          <button type="button" className="button secondary" onClick={() => setEditing(!editing)}>
-            {editing ? "Done editing" : "Edit notes"}
-          </button>
-        )}
-        <Link href="/" className="button secondary">
-          New video
-        </Link>
-      </div>
-      {editing ? (
-        <EditUnits notes={notes.data} />
-      ) : (
-        <div className="card notes">
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
-            components={{
-              // Timestamp links go to YouTube: open them next to the notes.
-              a: ({ href, children }) => (
-                <a href={href} target="_blank" rel="noopener noreferrer">
-                  {children}
-                </a>
-              ),
-            }}
-          >
-            {notes.data.markdown}
-          </ReactMarkdown>
-        </div>
-      )}
-      {notes.data.units.length > 0 && <PracticeQuestions notesId={notes.data.id} />}
+    <>
+      <header className="lesson-head">
+        <h1 className="lesson-title">{notes.data.title}</h1>
+      </header>
+      <NotesView notes={notes.data} />
       <NotesFeedback notesId={notes.data.id} />
-    </article>
+      <h2 className="section-title" style={{ marginTop: 40 }}>
+        Practice
+      </h2>
+      <Practice notesId={notes.data.id} />
+    </>
   );
 }

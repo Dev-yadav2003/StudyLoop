@@ -34,12 +34,18 @@ def request_key(video_id: str, options: JobOptions) -> str:
     return hashlib.sha256(canonical_json({"video": video_id, "options": options})).hexdigest()
 
 
+def stored_options(raw: dict[str, Any]) -> JobOptions:
+    """Options as stored with the job, minus fields since removed from `JobOptions` (rows
+    written before the cleanup carry `generate_questions` and would otherwise fail to load)."""
+    return JobOptions.model_validate({k: v for k, v in raw.items() if k in JobOptions.model_fields})
+
+
 def to_job(row: Any) -> Job:
     return Job(
         id=row.id,
         url=row.url,
         video_id=row.video_id,
-        options=JobOptions.model_validate(row.options),
+        options=stored_options(row.options),
         status=JobStatus(row.status),
         error=row.error,
         error_type=row.error_type,

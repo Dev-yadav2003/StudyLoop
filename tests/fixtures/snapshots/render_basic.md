@@ -6,7 +6,7 @@
 
 ### enumerate()
 
-<sub>▶ [00:42](https://youtu.be/dQw4w9WgXcQ?t=42)</sub>
+*▶ [00:42](https://youtu.be/dQw4w9WgXcQ?t=42)*
 
 Yields (index, item) pairs.
 The index starts at zero.
@@ -18,7 +18,7 @@ for i, name in enumerate(names):
 
 ### zip()
 
-<sub>▶ [06:40](https://youtu.be/dQw4w9WgXcQ?t=400)</sub>
+*▶ [06:40](https://youtu.be/dQw4w9WgXcQ?t=400)*
 
 About zip().
 
@@ -33,7 +33,7 @@ for a, b in zip(xs, ys):
 
 ### Why loops?
 
-<sub>▶ [03:20](https://youtu.be/dQw4w9WgXcQ?t=200)</sub>
+*▶ [03:20](https://youtu.be/dQw4w9WgXcQ?t=200)*
 
 About Why loops?.
 
@@ -41,6 +41,6 @@ About Why loops?.
 
 ### Late topic
 
-<sub>▶ [1:02:05](https://youtu.be/dQw4w9WgXcQ?t=3725)</sub>
+*▶ [1:02:05](https://youtu.be/dQw4w9WgXcQ?t=3725)*
 
 About Late topic.

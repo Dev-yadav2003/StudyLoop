@@ -96,7 +96,7 @@ def _unit(unit: KnowledgeUnit) -> str:
         links += " · also " + ", ".join(_link(s) for s in others)
     parts = [
         f"### {_one_line(unit.concept)}",
-        f"<sub>{links}</sub>",
+        f"*{links}*",
         _explanation(unit.explanation),
     ]
     parts += [fence(c.source, c.language or "") for c in unit.code]
@@ -131,9 +131,10 @@ def render_markdown(video: VideoMeta, units: list[KnowledgeUnit]) -> str:
 
 class RenderStage(Stage[ExtractedUnits, NotesDocument]):
     name = "render"
-    version = 6  # v2: + evidence/verify; v3: single `video`; v4: primary link + (also …)
+    version = 7  # v2: + evidence/verify; v3: single `video`; v4: primary link + (also …)
     # v5: no board text, numbered sections, timestamps on their own line, Markdown-safe
     # v6: lists separated from paragraphs, glued lists split
+    # v7: timestamp line is plain Markdown (italic), not <sub> HTML
     input_model = ExtractedUnits
     output_model = NotesDocument
 

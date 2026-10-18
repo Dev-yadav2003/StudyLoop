@@ -92,7 +92,7 @@ async def test_one_link_to_notes_then_cache_then_rerun(settings: Settings) -> No
 
     assert doc.title == VIDEO.title
     assert [u.concept for u in doc.units] == ["enumerate()"]
-    assert "### enumerate()\n\n<sub>▶ [00:42](https://youtu.be/dQw4w9WgXcQ?t=42)" in doc.markdown
+    assert "### enumerate()\n\n*▶ [00:42](https://youtu.be/dQw4w9WgXcQ?t=42)*" in doc.markdown
     assert "print(i, name)" in doc.markdown
     first = svc.runs.runs
     assert [r.stage for r in first] == ["resolve", *VIDEO_STAGE_ORDER]
