@@ -39,16 +39,15 @@ export function Practice({ notesId }: { notesId: string }) {
   const known = Object.values(verdicts).filter((v) => v === "known").length;
 
   return (
-    <div>
+    <div className="practice">
       <div className="practice-bar">
         <div className="group">
           Level
-          <div className="chips">
+          <div className="segmented" role="group" aria-label="Question level">
             {LEVELS.map((l) => (
               <button
                 key={l.value}
                 type="button"
-                className="chip"
                 aria-pressed={level === l.value}
                 title={l.hint}
                 onClick={() => setLevel(l.value)}
@@ -60,15 +59,9 @@ export function Practice({ notesId }: { notesId: string }) {
         </div>
         <div className="group">
           Questions
-          <div className="chips">
+          <div className="segmented" role="group" aria-label="Number of questions">
             {[3, 5, 10].map((n) => (
-              <button
-                key={n}
-                type="button"
-                className="chip"
-                aria-pressed={count === n}
-                onClick={() => setCount(n)}
-              >
+              <button key={n} type="button" aria-pressed={count === n} onClick={() => setCount(n)}>
                 {n}
               </button>
             ))}
@@ -82,19 +75,14 @@ export function Practice({ notesId }: { notesId: string }) {
         >
           {generate.isPending ? (
             <>
-              <RefreshIcon className="spin" /> Writing questions…
+              <RefreshIcon size={15} className="spin" /> Writing questions…
             </>
           ) : (
             <>
-              <SparkIcon /> {questions.length ? "New set" : "Generate questions"}
+              <SparkIcon size={15} /> {questions.length ? "New set" : "Generate questions"}
             </>
           )}
         </button>
-        {questions.length > 0 && (
-          <span className="score">
-            {known}/{questions.length} known
-          </span>
-        )}
       </div>
 
       {generate.isError && <p className="alert error">{generate.error.message}</p>}
@@ -108,6 +96,15 @@ export function Practice({ notesId }: { notesId: string }) {
       )}
       {generate.data && questions.length === 0 && (
         <p className="alert warn">No questions could be grounded in these notes.</p>
+      )}
+
+      {questions.length > 0 && (
+        <div className="score">
+          <div className="score-bar" aria-hidden="true">
+            <span style={{ width: `${(known / questions.length) * 100}%` }} />
+          </div>
+          {known} of {questions.length} known
+        </div>
       )}
 
       {questions.map((q, i) => (
@@ -143,45 +140,58 @@ function QuestionCard({
           {question.level === "application" ? "Apply" : "Recall"}
         </span>
         {verdict === "known" && <span className="badge ok">Got it</span>}
-        {verdict === "review" && <span className="badge warn">Review</span>}
+        {verdict === "review" && <span className="badge warn">To review</span>}
       </div>
       <div className="qtext">
         <Markdown>{question.question}</Markdown>
       </div>
 
       {open ? (
-        <div className="answer">
-          <Markdown>{question.answer}</Markdown>
-          <div className="answer-foot">
-            From
-            {question.units.map((u) => (
-              <span key={u.id} className="badge">
-                {u.concept}
-              </span>
-            ))}
-            {question.timestamps.map((t) => (
-              <a
-                key={t.url}
-                className="time primary"
-                href={t.url}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <PlayIcon size={10} /> {t.label}
-              </a>
-            ))}
+        <>
+          <div className="answer">
+            <div className="answer-label">Answer</div>
+            <Markdown>{question.answer}</Markdown>
+            <div className="answer-foot">
+              Taught in
+              {question.units.map((u) => (
+                <span key={u.id} className="badge">
+                  {u.concept}
+                </span>
+              ))}
+              {question.timestamps.map((t, i) => (
+                <a
+                  key={`${i}-${t.url}`}
+                  className="time primary"
+                  href={t.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <PlayIcon size={10} /> {t.label}
+                </a>
+              ))}
+            </div>
           </div>
-          <div className="self-check">
-            <button type="button" className="btn ghost sm" onClick={() => onVerdict("known")}>
+          <div className="qactions">
+            <button
+              type="button"
+              className="btn ghost sm"
+              aria-pressed={verdict === "known"}
+              onClick={() => onVerdict("known")}
+            >
               <CheckIcon size={14} /> Got it
             </button>
-            <button type="button" className="btn ghost sm" onClick={() => onVerdict("review")}>
-              <XIcon size={14} /> Review this
+            <button
+              type="button"
+              className="btn ghost sm"
+              aria-pressed={verdict === "review"}
+              onClick={() => onVerdict("review")}
+            >
+              <XIcon size={14} /> Review later
             </button>
           </div>
-        </div>
+        </>
       ) : (
-        <div className="self-check">
+        <div className="qactions">
           <button type="button" className="btn ghost sm" onClick={() => setOpen(true)}>
             Show answer
           </button>

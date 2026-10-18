@@ -62,7 +62,7 @@ export function NotesView({ notes }: { notes: Notes }) {
     <div className="notes-layout">
       <div>
         {sections.map((section, i) => (
-          <section key={section.title}>
+          <section key={section.title} className="notes-section">
             <h2 className="section-title" id={`s-${i + 1}`}>
               <span className="section-num">{i + 1}</span>
               {section.title}
@@ -128,12 +128,12 @@ function UnitCard({
           <div className="unit-tools">
             <button
               type="button"
-              className="icon-btn"
+              className="btn quiet sm"
               title="Edit this note"
               aria-label={`Edit ${unit.concept}`}
               onClick={() => setEditing(true)}
             >
-              <PencilIcon size={15} />
+              <PencilIcon size={14} /> Edit
             </button>
           </div>
         )}
@@ -151,9 +151,10 @@ function UnitCard({
             <PlayIcon size={10} /> {formatTime(primary.start_s)}
           </a>
         )}
-        {others.map((s) => (
+        {others.length > 0 && <span className="also">also at</span>}
+        {others.map((s, i) => (
           <a
-            key={`${s.video_id}-${s.start_s}`}
+            key={`${i}-${s.start_s}`}
             className="time"
             href={youtubeAt(s.video_id || videoId, s.start_s)}
             target="_blank"

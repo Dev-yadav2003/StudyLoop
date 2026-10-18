@@ -29,6 +29,7 @@ export function NotesFeedback({ notesId }: { notesId: string }) {
   return (
     <div className="feedback">
       <span>Were these notes useful?</span>
+      <span className="spacer" />
       <button
         type="button"
         className="btn ghost sm"
@@ -62,9 +63,9 @@ export function NotesFeedback({ notesId }: { notesId: string }) {
             placeholder="What was wrong? e.g. a concept is missing, an explanation is wrong…"
             onChange={(e) => setReason(e.target.value)}
           />
-          <div>
+          <div className="row">
             <button type="submit" className="btn sm" disabled={send.isPending}>
-              {send.isPending ? "Sending…" : "Send"}
+              {send.isPending ? "Sending…" : "Send feedback"}
             </button>
           </div>
         </form>

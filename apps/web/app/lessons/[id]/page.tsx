@@ -90,7 +90,7 @@ export default function LessonPage() {
   return (
     <>
       <header className="lesson-head">
-        <div style={{ minWidth: 0, flex: 1 }}>
+        <div className="lesson-head-main">
           <div className="crumbs">
             <FolderIcon size={14} />
             {chapter?.name ?? "Chapter"}

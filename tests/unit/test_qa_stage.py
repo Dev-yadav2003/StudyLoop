@@ -60,6 +60,14 @@ def test_spans_are_the_cited_units_primary_moments_in_time_order() -> None:
     assert [s.start_s for s in out.questions[0].spans] == [5, 26, 209]  # u1's 120s not used
 
 
+def test_notes_taught_at_the_same_second_give_one_link() -> None:
+    """Real case: two notes both at 00:00 → the same link twice → duplicate React keys."""
+    same = [unit("a", "Model evals", 0), unit("b", "App evals", 0.4), unit("c", "Later", 90)]
+    req = QaRequest(units=same, level=QaLevel.MIXED, count=5)
+    out = to_question_set(QaOutput(questions=[item("Types?", "a", "b", "c")]), req)
+    assert [s.start_s for s in out.questions[0].spans] == [0, 90]
+
+
 def test_duplicates_and_empty_questions_are_dropped() -> None:
     raw = QaOutput(
         questions=[

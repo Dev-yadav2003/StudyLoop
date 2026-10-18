@@ -5,6 +5,8 @@ import { useState } from "react";
 
 import { ApiError, api, call, type Unit, type UnitEdit } from "@/lib/api";
 
+import { CheckIcon } from "./icons";
+
 const lines = (text: string) =>
   text
     .split("\n")
@@ -66,47 +68,67 @@ export function UnitEditor({
 
   return (
     <form
-      className="unit-form"
+      className="editor"
       onSubmit={(e) => {
         e.preventDefault();
         save.mutate();
       }}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") onClose();
+      }}
     >
+      <div className="editor-head">
+        <span>Editing this note</span>
+        <span style={{ fontWeight: 400 }}>Timestamps and sources stay as they are</span>
+      </div>
+
+      <div className="editor-grid">
+        <label className="field">
+          Title
+          <input
+            className="input"
+            value={concept}
+            onChange={(e) => setConcept(e.target.value)}
+            required
+            autoFocus
+          />
+        </label>
+        <label className="field">
+          Section
+          <input className="input" value={section} onChange={(e) => setSection(e.target.value)} />
+        </label>
+      </div>
+
       <label className="field">
-        Title
-        <input
-          className="input"
-          value={concept}
-          onChange={(e) => setConcept(e.target.value)}
-          required
-        />
-      </label>
-      <label className="field">
-        Section
-        <input className="input" value={section} onChange={(e) => setSection(e.target.value)} />
-      </label>
-      <label className="field">
-        Note (Markdown: **bold**, - bullets, 1. steps)
+        <span>
+          Note <span className="hint">— Markdown: **bold**, “- ” bullets, “1. ” steps</span>
+        </span>
         <textarea
           className="textarea"
-          rows={Math.min(16, explanation.split("\n").length + 3)}
+          rows={Math.min(16, Math.max(5, explanation.split("\n").length + 2))}
           value={explanation}
           onChange={(e) => setExplanation(e.target.value)}
           required
         />
       </label>
+
       <label className="field">
-        Examples (one per line)
+        <span>
+          Examples <span className="hint">— one per line</span>
+        </span>
         <textarea
           className="textarea"
-          rows={3}
+          rows={Math.max(2, lines(examples).length + 1)}
           value={examples}
           onChange={(e) => setExamples(e.target.value)}
         />
       </label>
+
       {code.map((src, i) => (
         <label className="field" key={i}>
-          Code {code.length > 1 ? i + 1 : ""} (empty removes it)
+          <span>
+            Code {code.length > 1 ? i + 1 : ""} <span className="hint">— empty removes it</span>
+          </span>
           <textarea
             className="textarea mono"
             rows={Math.min(14, src.split("\n").length + 1)}
@@ -115,14 +137,15 @@ export function UnitEditor({
           />
         </label>
       ))}
-      <div className="actions">
-        <button type="submit" className="btn sm" disabled={!dirty || save.isPending}>
-          {save.isPending ? "Saving…" : "Save"}
-        </button>
+
+      <div className="editor-actions">
+        {save.isError && <span className="alert error">{save.error.message}</span>}
         <button type="button" className="btn ghost sm" onClick={onClose}>
           Cancel
         </button>
-        {save.isError && <span className="alert error">{save.error.message}</span>}
+        <button type="submit" className="btn sm" disabled={!dirty || save.isPending}>
+          <CheckIcon size={14} /> {save.isPending ? "Saving…" : "Save changes"}
+        </button>
       </div>
     </form>
   );

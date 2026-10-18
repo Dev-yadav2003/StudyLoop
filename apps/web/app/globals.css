@@ -1,16 +1,22 @@
-/* Design tokens. Light by default; dark follows the system unless the user picked a theme. */
+/* ==========================================================================
+   Design tokens. Light by default; dark follows the system unless the user
+   picked a theme (data-theme on <html>, set by the sidebar toggle).
+   Spacing scale: 4 · 8 · 12 · 16 · 24 · 32 · 48 · 64.
+   ========================================================================== */
+
 :root {
   --bg: #ffffff;
   --sidebar: #f7f7f8;
   --surface: #ffffff;
-  --surface-2: #f4f4f6;
+  --surface-2: #f5f5f7;
   --hover: #ececf1;
-  --text: #0f0f12;
-  --text-2: #3f3f46;
-  --muted: #71717a;
-  --border: #e4e4e7;
+  --text: #111114;
+  --text-2: #36363d;
+  --muted: #6e6e78;
+  --border: #e5e5ea;
+  --border-strong: #d4d4dc;
   --accent: #6d5dfc;
-  --accent-2: #8b7dff;
+  --accent-hover: #5b4ae8;
   --accent-soft: #efedff;
   --accent-text: #ffffff;
   --ok: #16a34a;
@@ -20,11 +26,15 @@
   --error: #dc2626;
   --error-soft: #fdecec;
   --code-bg: #f6f6f8;
-  --shadow: 0 1px 2px rgb(16 16 24 / 5%), 0 4px 16px rgb(16 16 24 / 6%);
-  --shadow-lg: 0 8px 40px rgb(16 16 24 / 12%);
+  --shadow-sm: 0 1px 2px rgb(16 16 24 / 6%);
+  --shadow: 0 1px 2px rgb(16 16 24 / 5%), 0 6px 20px rgb(16 16 24 / 6%);
+  --shadow-lg: 0 12px 48px rgb(16 16 24 / 14%);
   --radius: 14px;
   --radius-sm: 10px;
-  --sidebar-w: 288px;
+  --control-h: 38px;
+  --control-h-sm: 32px;
+  --sidebar-w: 280px;
+  --read-w: 740px;
   --font: var(--font-inter), "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
   --mono: ui-monospace, "Cascadia Code", "JetBrains Mono", Menlo, monospace;
   color-scheme: light;
@@ -32,55 +42,59 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #212121;
-    --sidebar: #171717;
-    --surface: #2a2a2a;
-    --surface-2: #303030;
-    --hover: #2f2f2f;
-    --text: #ececec;
-    --text-2: #c9c9cf;
-    --muted: #9b9ba3;
-    --border: #3a3a3a;
+    --bg: #1f1f22;
+    --sidebar: #17171a;
+    --surface: #26262a;
+    --surface-2: #2c2c31;
+    --hover: #303036;
+    --text: #f0f0f3;
+    --text-2: #cfcfd6;
+    --muted: #9a9aa5;
+    --border: #35353b;
+    --border-strong: #46464e;
     --accent: #8b7dff;
-    --accent-2: #a89dff;
-    --accent-soft: #2e2a4d;
+    --accent-hover: #9d91ff;
+    --accent-soft: #2d2950;
     --accent-text: #ffffff;
     --ok: #4ade80;
-    --ok-soft: #1c3326;
+    --ok-soft: #1b3326;
     --warn: #fbbf24;
     --warn-soft: #3a2f16;
     --error: #f87171;
     --error-soft: #3d1f1f;
-    --code-bg: #1b1b1b;
-    --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 4px 16px rgb(0 0 0 / 25%);
-    --shadow-lg: 0 8px 40px rgb(0 0 0 / 45%);
+    --code-bg: #18181b;
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / 30%);
+    --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 6px 20px rgb(0 0 0 / 25%);
+    --shadow-lg: 0 12px 48px rgb(0 0 0 / 50%);
     color-scheme: dark;
   }
 }
 
 :root[data-theme="dark"] {
-  --bg: #212121;
-  --sidebar: #171717;
-  --surface: #2a2a2a;
-  --surface-2: #303030;
-  --hover: #2f2f2f;
-  --text: #ececec;
-  --text-2: #c9c9cf;
-  --muted: #9b9ba3;
-  --border: #3a3a3a;
+  --bg: #1f1f22;
+  --sidebar: #17171a;
+  --surface: #26262a;
+  --surface-2: #2c2c31;
+  --hover: #303036;
+  --text: #f0f0f3;
+  --text-2: #cfcfd6;
+  --muted: #9a9aa5;
+  --border: #35353b;
+  --border-strong: #46464e;
   --accent: #8b7dff;
-  --accent-2: #a89dff;
-  --accent-soft: #2e2a4d;
+  --accent-hover: #9d91ff;
+  --accent-soft: #2d2950;
   --accent-text: #ffffff;
   --ok: #4ade80;
-  --ok-soft: #1c3326;
+  --ok-soft: #1b3326;
   --warn: #fbbf24;
   --warn-soft: #3a2f16;
   --error: #f87171;
   --error-soft: #3d1f1f;
-  --code-bg: #1b1b1b;
-  --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 4px 16px rgb(0 0 0 / 25%);
-  --shadow-lg: 0 8px 40px rgb(0 0 0 / 45%);
+  --code-bg: #18181b;
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 30%);
+  --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 6px 20px rgb(0 0 0 / 25%);
+  --shadow-lg: 0 12px 48px rgb(0 0 0 / 50%);
   color-scheme: dark;
 }
 
@@ -123,7 +137,15 @@ textarea {
   outline-offset: 2px;
 }
 
-/* ---------- app shell ---------- */
+h1,
+h2,
+h3 {
+  letter-spacing: -0.015em;
+}
+
+/* ==========================================================================
+   App shell
+   ========================================================================== */
 
 .shell {
   display: flex;
@@ -144,20 +166,16 @@ textarea {
 }
 
 .sidebar-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 14px 14px 8px;
+  padding: 16px 16px 12px;
 }
 
 .brand {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 10px;
   color: var(--text);
   font-weight: 700;
-  letter-spacing: -0.01em;
+  font-size: 16px;
 }
 
 .brand:hover {
@@ -170,25 +188,33 @@ textarea {
   width: 30px;
   height: 30px;
   border-radius: 9px;
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  background: linear-gradient(135deg, var(--accent), #a78bfa);
   color: #fff;
+  box-shadow: var(--shadow-sm);
 }
 
 .new-lesson {
-  margin: 6px 12px 10px;
+  padding: 0 12px 12px;
 }
 
 .sidebar-search {
-  margin: 0 12px 8px;
   position: relative;
+  margin: 0 12px 8px;
 }
 
 .sidebar-search input {
   width: 100%;
-  padding: 8px 10px 8px 32px;
+  height: var(--control-h-sm);
+  padding: 0 10px 0 32px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
   background: var(--surface);
+  font-size: 14px;
+}
+
+.sidebar-search input:focus {
+  outline: none;
+  border-color: var(--accent);
 }
 
 .sidebar-search svg {
@@ -202,18 +228,18 @@ textarea {
 .sidebar-scroll {
   flex: 1;
   overflow-y: auto;
-  padding: 4px 8px 12px;
+  padding: 4px 8px 16px;
 }
 
 .sidebar-label {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 8px 6px;
-  font-size: 12px;
+  padding: 12px 8px 6px;
+  font-size: 11.5px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.07em;
   color: var(--muted);
 }
 
@@ -222,7 +248,7 @@ textarea {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 10px 14px;
+  padding: 12px 16px;
   border-top: 1px solid var(--border);
   font-size: 13px;
   color: var(--muted);
@@ -234,8 +260,9 @@ textarea {
   gap: 8px;
   min-height: 36px;
   padding: 4px 6px 4px 8px;
-  border-radius: var(--radius-sm);
+  border-radius: 8px;
   color: var(--text-2);
+  font-size: 14px;
   cursor: pointer;
   user-select: none;
 }
@@ -260,7 +287,12 @@ textarea {
 }
 
 .tree-row .count {
-  font-size: 12px;
+  min-width: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  font-size: 11.5px;
+  text-align: center;
   color: var(--muted);
 }
 
@@ -274,12 +306,13 @@ textarea {
   display: flex;
 }
 
-.tree-row:hover .count {
+.tree-row:hover .count,
+.tree-row:focus-within .count {
   display: none;
 }
 
 .tree-children {
-  margin: 2px 0 6px 14px;
+  margin: 2px 0 8px 15px;
   padding-left: 8px;
   border-left: 1px solid var(--border);
 }
@@ -287,13 +320,15 @@ textarea {
 .tree-row input {
   flex: 1;
   min-width: 0;
-  padding: 3px 6px;
+  height: 28px;
+  padding: 0 8px;
   border: 1px solid var(--accent);
   border-radius: 6px;
   background: var(--surface);
 }
 
 .chevron {
+  flex: 0 0 auto;
   transition: transform 0.15s ease;
   color: var(--muted);
 }
@@ -307,7 +342,7 @@ textarea {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--border);
+  background: var(--border-strong);
 }
 
 .dot.succeeded {
@@ -331,7 +366,8 @@ textarea {
 }
 
 .empty-tree {
-  padding: 8px;
+  margin: 4px 0;
+  padding: 6px 8px;
   font-size: 13px;
   color: var(--muted);
 }
@@ -346,8 +382,8 @@ textarea {
 .topbar {
   display: none;
   align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
+  gap: 12px;
+  padding: 10px 16px;
   border-bottom: 1px solid var(--border);
   background: var(--bg);
   position: sticky;
@@ -357,9 +393,9 @@ textarea {
 
 .page {
   width: 100%;
-  max-width: 1120px;
+  max-width: 1160px;
   margin: 0 auto;
-  padding: 28px 32px 80px;
+  padding: 40px 48px 96px;
 }
 
 .scrim {
@@ -383,7 +419,7 @@ textarea {
     display: block;
     position: fixed;
     inset: 0;
-    background: rgb(0 0 0 / 35%);
+    background: rgb(0 0 0 / 40%);
     z-index: 15;
   }
 
@@ -392,54 +428,76 @@ textarea {
   }
 
   .page {
-    padding: 20px 16px 64px;
+    padding: 24px 16px 72px;
   }
 }
 
-/* ---------- buttons & inputs ---------- */
+/* ==========================================================================
+   Controls: one height scale for buttons, chips and inputs
+   ========================================================================== */
 
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 9px 16px;
+  height: var(--control-h);
+  padding: 0 16px;
   border-radius: var(--radius-sm);
-  border: 1px solid transparent;
+  border: 1px solid var(--accent);
   background: var(--accent);
   color: var(--accent-text);
+  font-size: 14px;
   font-weight: 600;
+  line-height: 1;
   cursor: pointer;
   white-space: nowrap;
+  box-shadow: var(--shadow-sm);
   transition:
     background 0.15s ease,
     border-color 0.15s ease,
-    opacity 0.15s ease;
+    color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .btn:hover {
-  background: var(--accent-2);
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
   text-decoration: none;
 }
 
+.btn:active {
+  transform: translateY(1px);
+}
+
 .btn:disabled {
-  opacity: 0.55;
-  cursor: default;
+  cursor: not-allowed;
+  opacity: 0.45;
+  transform: none;
 }
 
 .btn.ghost {
-  background: transparent;
+  background: var(--surface);
+  border-color: var(--border-strong);
   color: var(--text-2);
-  border-color: var(--border);
 }
 
 .btn.ghost:hover {
   background: var(--hover);
+  border-color: var(--border-strong);
   color: var(--text);
+}
+
+.btn.ghost[aria-pressed="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
 }
 
 .btn.quiet {
   background: transparent;
+  border-color: transparent;
+  box-shadow: none;
   color: var(--text-2);
 }
 
@@ -447,19 +505,15 @@ textarea {
   background: var(--hover);
 }
 
-.btn.danger {
-  background: transparent;
-  color: var(--error);
-  border-color: var(--border);
-}
-
 .btn.block {
   width: 100%;
 }
 
 .btn.sm {
-  padding: 5px 10px;
+  height: var(--control-h-sm);
+  padding: 0 12px;
   font-size: 13px;
+  border-radius: 8px;
 }
 
 .icon-btn {
@@ -485,22 +539,41 @@ textarea {
 
 .field {
   display: grid;
-  gap: 6px;
+  gap: 8px;
   font-size: 13px;
   font-weight: 600;
   color: var(--text-2);
+}
+
+.field .hint {
+  font-weight: 400;
+  color: var(--muted);
 }
 
 .input,
 .select,
 .textarea {
   width: 100%;
-  padding: 10px 12px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
   background: var(--surface);
   font-weight: 400;
   font-size: 15px;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.input,
+.select {
+  height: var(--control-h);
+  padding: 0 12px;
+}
+
+.textarea {
+  padding: 10px 12px;
+  resize: vertical;
+  line-height: 1.6;
 }
 
 .input:focus,
@@ -511,14 +584,10 @@ textarea {
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
-.textarea {
-  resize: vertical;
-  line-height: 1.5;
-}
-
 .textarea.mono {
   font-family: var(--mono);
   font-size: 13px;
+  line-height: 1.55;
 }
 
 .chips {
@@ -531,14 +600,18 @@ textarea {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 12px;
+  height: var(--control-h-sm);
+  padding: 0 14px;
   border-radius: 999px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
   background: var(--surface);
   color: var(--text-2);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
 }
 
 .chip:hover {
@@ -550,13 +623,45 @@ textarea {
   border-color: var(--accent);
   background: var(--accent-soft);
   color: var(--accent);
+  font-weight: 600;
+}
+
+.segmented {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+
+.segmented button {
+  height: 28px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.segmented button:hover {
+  color: var(--text);
+}
+
+.segmented button[aria-pressed="true"] {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-sm);
 }
 
 .badge {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 2px 9px;
+  height: 22px;
+  padding: 0 9px;
   border-radius: 999px;
   font-size: 11.5px;
   font-weight: 600;
@@ -581,6 +686,7 @@ textarea {
 }
 
 .alert {
+  margin: 12px 0 0;
   padding: 10px 14px;
   border-radius: var(--radius-sm);
   font-size: 14px;
@@ -604,39 +710,41 @@ textarea {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 20px;
+  padding: 24px;
 }
 
-/* ---------- home / composer ---------- */
+/* ==========================================================================
+   Home: composer
+   ========================================================================== */
 
 .home {
-  min-height: calc(100vh - 140px);
+  min-height: calc(100vh - 180px);
   display: flex;
   flex-direction: column;
   justify-content: center;
-  max-width: 760px;
+  max-width: 780px;
   margin: 0 auto;
 }
 
 .hero-title {
-  margin: 0 0 8px;
-  font-size: clamp(1.7rem, 3vw, 2.3rem);
+  margin: 0 0 12px;
+  font-size: clamp(1.8rem, 3vw, 2.4rem);
   line-height: 1.15;
-  letter-spacing: -0.02em;
   text-align: center;
 }
 
 .hero-sub {
-  margin: 0 auto 28px;
+  margin: 0 auto 32px;
   max-width: 560px;
   text-align: center;
   color: var(--muted);
+  font-size: 16px;
 }
 
 .composer {
   display: grid;
-  gap: 14px;
-  padding: 16px;
+  gap: 16px;
+  padding: 20px;
   border: 1px solid var(--border);
   border-radius: 20px;
   background: var(--surface);
@@ -646,13 +754,25 @@ textarea {
 .composer-link {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+  padding: 4px 4px 4px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 14px;
+  background: var(--bg);
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.composer-link:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 .composer-link input {
   flex: 1;
   min-width: 0;
-  padding: 12px 4px;
+  height: 44px;
   border: 0;
   background: transparent;
   font-size: 16px;
@@ -667,35 +787,60 @@ textarea {
   flex: 0 0 auto;
 }
 
+.composer-link .btn {
+  height: 42px;
+  padding: 0 20px;
+  border-radius: 11px;
+}
+
 .composer-row {
+  display: grid;
+  grid-template-columns: minmax(0, 220px) minmax(0, 1fr);
+  gap: 12px;
+}
+
+.composer-row.with-new {
+  grid-template-columns: minmax(0, 220px) minmax(0, 200px) minmax(0, 1fr);
+}
+
+.composer-foot {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
+  gap: 8px 12px;
 }
 
-.composer-row .select {
-  width: auto;
-  min-width: 170px;
-  padding: 7px 10px;
-  font-size: 14px;
+.composer-foot .label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
 }
 
-.composer-row .spacer {
-  flex: 1;
+@media (max-width: 700px) {
+  .composer-row,
+  .composer-row.with-new {
+    grid-template-columns: 1fr;
+  }
+
+  .composer-link {
+    flex-wrap: wrap;
+    padding: 8px;
+  }
+
+  .composer-link .btn {
+    width: 100%;
+  }
 }
 
 .steps {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  margin-top: 28px;
+  gap: 16px;
+  margin-top: 32px;
 }
 
 .step {
-  padding: 14px;
+  padding: 16px 18px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
@@ -705,13 +850,14 @@ textarea {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
   font-size: 14px;
 }
 
 .step p {
   margin: 0;
-  font-size: 13px;
+  font-size: 13.5px;
+  line-height: 1.55;
   color: var(--muted);
 }
 
@@ -721,31 +867,40 @@ textarea {
   }
 }
 
-/* ---------- lesson page ---------- */
+/* ==========================================================================
+   Lesson page
+   ========================================================================== */
 
 .lesson-head {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-start;
+  align-items: flex-end;
   justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 18px;
+  gap: 16px 24px;
+  padding-bottom: 24px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.lesson-head-main {
+  flex: 1;
+  min-width: 0;
 }
 
 .crumbs {
   display: flex;
   align-items: center;
   gap: 6px;
+  margin-bottom: 10px;
   font-size: 13px;
   color: var(--muted);
-  margin-bottom: 6px;
 }
 
 .lesson-title {
   margin: 0;
-  font-size: clamp(1.4rem, 2.4vw, 1.9rem);
-  line-height: 1.2;
-  letter-spacing: -0.02em;
+  max-width: 820px;
+  font-size: clamp(1.4rem, 2.2vw, 1.75rem);
+  line-height: 1.25;
 }
 
 .lesson-title button {
@@ -756,13 +911,14 @@ textarea {
 
 .lesson-title button:hover {
   background: var(--hover);
+  box-shadow: 0 0 0 4px var(--hover);
 }
 
 .lesson-title input {
-  width: min(640px, 100%);
+  width: min(720px, 100%);
   font-size: inherit;
   font-weight: 700;
-  padding: 2px 6px;
+  padding: 2px 8px;
   border: 1px solid var(--accent);
   border-radius: 8px;
   background: var(--surface);
@@ -772,10 +928,16 @@ textarea {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 14px;
-  margin-top: 8px;
+  gap: 6px 10px;
+  margin-top: 12px;
   font-size: 13px;
   color: var(--muted);
+}
+
+.meta > * + *::before {
+  content: "·";
+  margin-right: 10px;
+  color: var(--border-strong);
 }
 
 .toolbar {
@@ -788,7 +950,7 @@ textarea {
   display: flex;
   gap: 4px;
   padding: 4px;
-  margin-bottom: 22px;
+  margin-bottom: 32px;
   width: fit-content;
   border-radius: 12px;
   background: var(--surface-2);
@@ -798,7 +960,8 @@ textarea {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 7px 16px;
+  height: 34px;
+  padding: 0 18px;
   border: 0;
   border-radius: 9px;
   background: transparent;
@@ -808,22 +971,29 @@ textarea {
   cursor: pointer;
 }
 
+.tab:hover {
+  color: var(--text);
+}
+
 .tab[aria-selected="true"] {
   background: var(--surface);
   color: var(--text);
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-sm);
 }
+
+/* ---------- notes: a document, not a stack of boxes ---------- */
 
 .notes-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 230px;
-  gap: 36px;
+  grid-template-columns: minmax(0, var(--read-w)) 220px;
+  justify-content: space-between;
+  gap: 56px;
   align-items: start;
 }
 
-@media (max-width: 1100px) {
+@media (max-width: 1180px) {
   .notes-layout {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: minmax(0, var(--read-w));
   }
 
   .outline {
@@ -833,15 +1003,17 @@ textarea {
 
 .outline {
   position: sticky;
-  top: 24px;
+  top: 32px;
+  max-height: calc(100vh - 64px);
+  overflow-y: auto;
   font-size: 13px;
 }
 
 .outline h4 {
-  margin: 0 0 10px;
-  font-size: 12px;
+  margin: 0 0 12px;
+  font-size: 11.5px;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.07em;
   color: var(--muted);
 }
 
@@ -849,8 +1021,10 @@ textarea {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: grid;
-  gap: 2px;
+}
+
+.outline > ol > li + li {
+  margin-top: 6px;
 }
 
 .outline a {
@@ -858,6 +1032,7 @@ textarea {
   padding: 4px 10px;
   border-left: 2px solid var(--border);
   color: var(--text-2);
+  line-height: 1.4;
 }
 
 .outline a:hover {
@@ -869,25 +1044,29 @@ textarea {
 .outline .sub a {
   padding-left: 22px;
   color: var(--muted);
+  font-size: 12.5px;
+}
+
+.notes-section + .notes-section {
+  margin-top: 48px;
 }
 
 .section-title {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin: 34px 0 14px;
-  font-size: 1.25rem;
-  letter-spacing: -0.01em;
-  scroll-margin-top: 20px;
-}
-
-.section-title:first-child {
-  margin-top: 0;
+  margin: 0 0 8px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 1.3rem;
+  line-height: 1.3;
+  scroll-margin-top: 24px;
 }
 
 .section-num {
   display: grid;
   place-items: center;
+  flex: 0 0 auto;
   width: 30px;
   height: 30px;
   border-radius: 9px;
@@ -898,30 +1077,30 @@ textarea {
 
 .unit {
   position: relative;
-  margin-bottom: 14px;
-  padding: 18px 20px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
-  scroll-margin-top: 20px;
+  padding: 24px 0;
+  scroll-margin-top: 24px;
+}
+
+.unit + .unit {
+  border-top: 1px dashed var(--border);
 }
 
 .unit-head {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
 
 .unit-title {
   margin: 0;
-  font-size: 1.06rem;
+  font-size: 1.12rem;
   line-height: 1.35;
 }
 
 .unit-tools {
   display: flex;
-  gap: 2px;
+  gap: 4px;
   opacity: 0;
   transition: opacity 0.15s ease;
 }
@@ -931,18 +1110,32 @@ textarea {
   opacity: 1;
 }
 
+@media (hover: none) {
+  .unit-tools {
+    opacity: 1;
+  }
+}
+
 .times {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 6px;
-  margin: 8px 0 4px;
+  margin: 10px 0 14px;
+}
+
+.times .also {
+  margin-left: 4px;
+  font-size: 12px;
+  color: var(--muted);
 }
 
 .time {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 2px 9px;
+  gap: 6px;
+  height: 24px;
+  padding: 0 10px;
   border-radius: 999px;
   background: var(--surface-2);
   color: var(--text-2);
@@ -958,13 +1151,14 @@ textarea {
 
 .time:hover {
   text-decoration: none;
-  filter: brightness(0.97);
+  box-shadow: inset 0 0 0 1px currentColor;
 }
 
 /* Markdown inside notes, answers and questions */
 .prose {
   color: var(--text-2);
-  line-height: 1.7;
+  font-size: 16px;
+  line-height: 1.75;
 }
 
 .prose > :first-child {
@@ -976,21 +1170,23 @@ textarea {
 }
 
 .prose p {
-  margin: 0.6em 0;
+  margin: 0.75em 0;
 }
 
 .prose ul,
 .prose ol {
-  margin: 0.6em 0;
-  padding-left: 1.3em;
+  margin: 0.75em 0;
+  padding-left: 1.4em;
 }
 
 .prose li {
-  margin: 0.3em 0;
+  margin: 0.4em 0;
+  padding-left: 0.2em;
 }
 
 .prose li::marker {
   color: var(--accent);
+  font-weight: 600;
 }
 
 .prose strong {
@@ -999,16 +1195,17 @@ textarea {
 }
 
 .prose code {
-  padding: 0.12em 0.4em;
+  padding: 0.15em 0.4em;
   border-radius: 6px;
   background: var(--code-bg);
+  border: 1px solid var(--border);
   font-family: var(--mono);
-  font-size: 0.88em;
+  font-size: 0.86em;
 }
 
 .prose pre {
-  margin: 0.8em 0;
-  padding: 14px 16px;
+  margin: 1em 0;
+  padding: 16px 18px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--code-bg);
@@ -1017,70 +1214,78 @@ textarea {
 
 .prose pre code {
   padding: 0;
+  border: 0;
   background: none;
-  font-size: 13px;
-  line-height: 1.55;
+  font-size: 13.5px;
+  line-height: 1.6;
 }
 
 .prose table {
   width: 100%;
-  margin: 0.8em 0;
+  margin: 1em 0;
   border-collapse: collapse;
-  font-size: 14px;
+  font-size: 14.5px;
 }
 
 .prose th,
 .prose td {
-  padding: 8px 10px;
+  padding: 8px 12px;
   border: 1px solid var(--border);
   text-align: left;
+  vertical-align: top;
 }
 
 .prose th {
   background: var(--surface-2);
+  color: var(--text);
 }
 
 .code-block {
   position: relative;
-  margin: 12px 0 0;
+  margin: 16px 0 0;
 }
 
 .code-block .lang {
   position: absolute;
-  top: 8px;
-  right: 10px;
+  top: 10px;
+  right: 12px;
   font-size: 11px;
   font-weight: 600;
+  letter-spacing: 0.05em;
   color: var(--muted);
   text-transform: uppercase;
 }
 
 .code-block pre {
   margin: 0;
-  padding: 14px 16px;
+  padding: 16px 18px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--code-bg);
   overflow-x: auto;
   font-family: var(--mono);
-  font-size: 13px;
-  line-height: 1.55;
+  font-size: 13.5px;
+  line-height: 1.6;
 }
 
 .examples {
-  margin-top: 12px;
-  padding: 10px 14px;
-  border-radius: var(--radius-sm);
+  margin-top: 16px;
+  padding: 12px 16px;
+  border-left: 3px solid var(--accent);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
   background: var(--surface-2);
-  font-size: 14px;
 }
 
 .examples h5 {
-  margin: 0 0 4px;
-  font-size: 12px;
+  margin: 0 0 6px;
+  font-size: 11.5px;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.07em;
   color: var(--muted);
+}
+
+.examples .prose {
+  font-size: 15px;
 }
 
 .examples ul {
@@ -1088,20 +1293,61 @@ textarea {
   padding-left: 1.2em;
 }
 
+.examples li + li {
+  margin-top: 4px;
+}
+
 .edited-tag {
-  margin-left: 8px;
+  margin-left: 10px;
   vertical-align: middle;
 }
 
-.unit-form {
+/* ---------- inline editor ---------- */
+
+.editor {
   display: grid;
-  gap: 12px;
+  gap: 18px;
+  margin-top: 12px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
 }
 
-.unit-form .actions {
+.editor-head {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.editor-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 700px) {
+  .editor-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
   gap: 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.editor-actions .alert {
+  margin: 0 auto 0 0;
 }
 
 /* ---------- progress ---------- */
@@ -1112,7 +1358,7 @@ textarea {
 
 .progress-bar {
   height: 6px;
-  margin: 16px 0 18px;
+  margin: 20px 0;
   border-radius: 999px;
   background: var(--surface-2);
   overflow: hidden;
@@ -1122,7 +1368,7 @@ textarea {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  background: linear-gradient(90deg, var(--accent), #a78bfa);
   transition: width 0.4s ease;
 }
 
@@ -1131,14 +1377,14 @@ textarea {
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 4px;
+  gap: 2px;
 }
 
 .stage-list li {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 7px 4px;
+  gap: 12px;
+  padding: 8px 4px;
   font-size: 14px;
   color: var(--muted);
 }
@@ -1158,7 +1404,7 @@ textarea {
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  border: 1.5px solid var(--border);
+  border: 1.5px solid var(--border-strong);
   flex: 0 0 auto;
 }
 
@@ -1188,56 +1434,89 @@ textarea {
 
 /* ---------- practice ---------- */
 
+.practice {
+  max-width: 820px;
+}
+
 .practice-bar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 12px 18px;
-  margin-bottom: 18px;
-}
-
-.practice-bar .group {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  color: var(--muted);
-}
-
-.score {
-  margin-left: auto;
-  font-size: 13px;
-  color: var(--muted);
-}
-
-.qcard {
-  margin-bottom: 14px;
-  padding: 18px 20px;
+  gap: 12px 20px;
+  margin-bottom: 24px;
+  padding: 12px 16px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
 }
 
+.practice-bar .group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.practice-bar .btn {
+  margin-left: auto;
+}
+
+.score {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.score-bar {
+  flex: 1;
+  max-width: 240px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.score-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--ok);
+  transition: width 0.3s ease;
+}
+
+.qcard {
+  margin-bottom: 16px;
+  padding: 20px 24px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  transition: border-color 0.15s ease;
+}
+
 .qcard.known {
-  border-color: color-mix(in srgb, var(--ok) 45%, var(--border));
+  border-color: color-mix(in srgb, var(--ok) 50%, var(--border));
 }
 
 .qcard.review {
-  border-color: color-mix(in srgb, var(--warn) 45%, var(--border));
+  border-color: color-mix(in srgb, var(--warn) 50%, var(--border));
 }
 
 .qhead {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
 }
 
 .qnum {
   display: grid;
   place-items: center;
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   border-radius: 8px;
   background: var(--surface-2);
   font-size: 13px;
@@ -1245,16 +1524,26 @@ textarea {
   color: var(--text-2);
 }
 
-.qtext {
-  font-size: 1.02rem;
+.qtext .prose {
   color: var(--text);
+  font-size: 16.5px;
+  font-weight: 500;
 }
 
 .answer {
-  margin-top: 14px;
-  padding: 14px 16px;
+  margin-top: 16px;
+  padding: 16px 18px;
   border-radius: var(--radius-sm);
   background: var(--surface-2);
+}
+
+.answer-label {
+  margin-bottom: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--muted);
 }
 
 .answer-foot {
@@ -1262,26 +1551,33 @@ textarea {
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  margin-top: 12px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
   font-size: 13px;
   color: var(--muted);
 }
 
-.self-check {
+.qactions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
-  margin-top: 12px;
+  margin-top: 16px;
 }
 
 .empty {
-  padding: 40px 20px;
+  padding: 48px 24px;
   text-align: center;
   color: var(--muted);
 }
 
 .empty h3 {
-  margin: 10px 0 4px;
+  margin: 12px 0 6px;
   color: var(--text);
+}
+
+.empty p {
+  margin: 0;
 }
 
 /* ---------- feedback ---------- */
@@ -1290,20 +1586,34 @@ textarea {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
-  margin-top: 28px;
-  padding: 14px 18px;
-  border: 1px dashed var(--border);
+  gap: 12px;
+  max-width: var(--read-w);
+  margin-top: 48px;
+  padding: 16px 20px;
+  border: 1px solid var(--border);
   border-radius: var(--radius);
+  background: var(--surface-2);
   color: var(--text-2);
   font-size: 14px;
+  font-weight: 500;
+}
+
+.feedback .spacer {
+  flex: 1;
 }
 
 .feedback form {
   display: grid;
-  gap: 8px;
+  gap: 12px;
   width: 100%;
 }
+
+.feedback form .row {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ---------- utilities ---------- */
 
 .spin {
   animation: spin 0.8s linear infinite;
@@ -1318,19 +1628,17 @@ textarea {
   white-space: nowrap;
 }
 
+/* Long words or URLs in notes never widen the page. */
+.prose,
+.unit-title,
+.lesson-title {
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 700px) {
   .lesson-head {
     flex-direction: column;
-    gap: 12px;
-  }
-
-  .lesson-head > * {
-    width: 100%;
-  }
-
-  .unit,
-  .qcard {
-    padding: 16px;
+    align-items: stretch;
   }
 
   .tabs {
@@ -1341,11 +1649,17 @@ textarea {
     flex: 1;
     justify-content: center;
   }
-}
 
-/* Long words or URLs in notes never widen the page. */
-.prose,
-.unit-title,
-.lesson-title {
-  overflow-wrap: anywhere;
+  .qcard {
+    padding: 16px;
+  }
+
+  .practice-bar .btn {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .prose {
+    font-size: 15.5px;
+  }
 }

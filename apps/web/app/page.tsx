@@ -105,9 +105,9 @@ function Composer() {
           </button>
         </label>
 
-        <div className="composer-row">
-          <label className="group">
-            <span className="sr-only">Chapter</span>
+        <div className={`composer-row ${creatingChapter ? "with-new" : ""}`}>
+          <label className="field">
+            Chapter
             <select
               className="select"
               value={chapterId}
@@ -115,33 +115,40 @@ function Composer() {
             >
               {chapters.data?.map((c) => (
                 <option key={c.id} value={c.id}>
-                  📁 {c.name}
+                  {c.name}
                 </option>
               ))}
-              <option value={NEW_CHAPTER}>＋ New chapter…</option>
+              <option value={NEW_CHAPTER}>+ New chapter…</option>
             </select>
           </label>
           {creatingChapter && (
+            <label className="field">
+              New chapter name
+              <input
+                className="input"
+                placeholder="e.g. Python"
+                maxLength={80}
+                value={newChapter}
+                onChange={(e) => setNewChapter(e.target.value)}
+              />
+            </label>
+          )}
+          <label className="field">
+            <span>
+              Lesson name <span className="hint">— optional, defaults to the video title</span>
+            </span>
             <input
               className="input"
-              style={{ width: 200, padding: "7px 10px", fontSize: 14 }}
-              placeholder="Chapter name, e.g. Python"
-              maxLength={80}
-              value={newChapter}
-              onChange={(e) => setNewChapter(e.target.value)}
+              placeholder="e.g. Lesson 3: Loops"
+              maxLength={200}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
             />
-          )}
-          <input
-            className="input"
-            style={{ flex: "1 1 180px", padding: "7px 10px", fontSize: 14 }}
-            placeholder="Lesson name (optional)"
-            maxLength={200}
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
+          </label>
         </div>
 
-        <div className="chips" role="radiogroup" aria-label="Subject type">
+        <div className="composer-foot" role="radiogroup" aria-label="Subject type">
+          <span className="label">Lecture type</span>
           {PRESETS.map((p) => (
             <button
               key={p.value}
@@ -155,11 +162,11 @@ function Composer() {
             >
               {preset === p.value && <CheckIcon size={13} />}
               {p.label}
-              <span className="muted" style={{ fontWeight: 400 }}>
-                · {p.hint}
-              </span>
             </button>
           ))}
+          <span className="muted" style={{ fontSize: 13 }}>
+            {PRESETS.find((p) => p.value === preset)?.hint}
+          </span>
         </div>
 
         {error && (

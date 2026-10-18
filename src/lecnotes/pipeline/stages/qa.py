@@ -50,7 +50,7 @@ def _norm(text: str) -> str:
 
 class QaStage(Stage[QaRequest, QuestionSet]):
     name = "qa"
-    version = 1
+    version = 2  # v2: one timestamp per distinct link (cached v1 sets repeated 00:00)
     input_model = QaRequest
     output_model = QuestionSet
 
@@ -127,5 +127,9 @@ def to_question_set(raw: QaOutput, request: QaRequest) -> QuestionSet:
 
 
 def _primary_spans(spans: list[VideoSpan]) -> list[VideoSpan]:
-    unique = {(s.video_id, s.start_s, s.end_s): s for s in spans}
+    """One per distinct link: two notes taught from the same second link to the same place
+    (the UI keyed chips by link, and showed `00:00` twice)."""
+    unique: dict[tuple[str, int], VideoSpan] = {}
+    for s in spans:
+        unique.setdefault((s.video_id, int(s.start_s)), s)
     return sorted(unique.values(), key=lambda s: s.start_s)
