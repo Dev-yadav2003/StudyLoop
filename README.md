@@ -4,8 +4,10 @@ Turn a public YouTube lecture into faithful, timestamped study notes covering wh
 teacher **said** and what they **wrote or showed** — organised in chapters, with practice
 questions to test yourself.
 
-See [`plan.md`](plan.md) for the architecture and build plan, and
-[`docs/devlog.md`](docs/devlog.md) for progress notes and measured results.
+- [`docs/interview-guide.md`](docs/interview-guide.md): how it works end to end, every
+  technology choice and why, the numbers, and the hard problems solved.
+- [`docs/devlog.md`](docs/devlog.md): step-by-step progress notes and measured results.
+- [`plan.md`](plan.md): the original architecture and build plan.
 
 ## Setup
 
