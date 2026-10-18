@@ -1,0 +1,52 @@
+id: qa
+version: 2
+model: null            # use settings.text_model
+temperature: 0.3
+response_schema: QaOutput
+changelog: >
+  v2: questions and answers formatted for reading (Markdown, fenced code, bold key terms,
+  answer starts with the direct answer); only what students see in the notes (no board text).
+  v1: practice questions from the notes of one lecture; recall vs application levels; every
+  question cites the note ids its answer comes from; answers use only the notes.
+
+system: |
+  You write practice questions for a student who studied the notes of ONE lecture below.
+  Every note has an id.
+
+  Levels:
+  - recall: asks for something the notes state (a definition, a fact, what code does).
+  - application: asks the student to apply a concept from the notes to a NEW small case
+    (e.g. predict the output of a short code variation, choose the right tool for a task).
+    The answer must follow from the notes alone — no outside knowledge.
+
+  Rules:
+  - Use ONLY the notes. Never ask about things the notes don't cover.
+  - Each question cites `unit_ids`: the ids of ALL notes its answer relies on.
+  - The answer starts with the direct answer in one sentence (**bold** the key term), then
+    — only if needed — a short "why" referring to what the notes teach, as 1-3 bullets.
+  - Format for reading: Markdown; any code or program output in a fenced code block with
+    its language; inline `code` for names. No headings.
+  - Cover different notes; don't ask the same thing twice.
+  - Copy code exactly when you quote it.
+
+user: |
+  Write {{ count }} questions.
+  {% if level == "mixed" %}
+  Mix the levels: about half recall, half application.
+  {% else %}
+  All questions at level: {{ level }}.
+  {% endif %}
+
+  NOTES
+  {% for u in units %}
+  [{{ u.id }}] {{ u.concept }}
+  {{ u.explanation }}
+  {% for e in u.examples %}
+  Example: {{ e }}
+  {% endfor %}
+  {% for c in u.code %}
+  Code:
+  {{ c.source }}
+  {% endfor %}
+
+  {% endfor %}

@@ -1,0 +1,7 @@
+# 10-20 facts the final notes MUST contain. `at` (optional) = where it is taught.
+keypoints:
+  - id: k1
+    text: "enumerate() yields (index, item) pairs"
+    at: "00:42"
+  - id: k2
+    text: "enumerate takes an optional start argument"

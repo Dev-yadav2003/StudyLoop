@@ -1,0 +1,247 @@
+"""Typed application settings.
+
+All behaviour that may change between environments (models, thresholds, feature flags)
+lives here, never as literals in code. Secrets are required and validated on first access,
+so a missing key fails at startup rather than in the middle of a job.
+
+Usage:
+    from lecnotes.config import settings      # validated, cached singleton
+    from lecnotes.config import get_settings  # same object; handy for FastAPI Depends
+"""
+
+from __future__ import annotations
+
+from functools import lru_cache
+from typing import Annotated, Literal
+
+from pydantic import (
+    BaseModel,
+    Field,
+    SecretStr,
+    ValidationError,
+    ValidationInfo,
+    field_validator,
+    model_validator,
+)
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
+
+MediaResolution = Literal["low", "medium", "high"]
+
+
+class ConfigError(RuntimeError):
+    """Raised when settings are missing or invalid. Lists every offending env var."""
+
+
+class FeatureFlags(BaseModel):
+    """Toggled with env vars like `FEATURES__QA=true`."""
+
+    merge: bool = True
+    verify: bool = True
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        env_nested_delimiter="__",
+        extra="ignore",
+        frozen=True,
+    )
+
+    # --- runtime ---
+    env: Literal["dev", "test", "prod"] = "dev"
+    log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
+
+    # --- secrets (required) ---
+    gemini_api_key: SecretStr | None = None
+    gemini_api_keys: Annotated[list[SecretStr], NoDecode] = Field(
+        default_factory=list,
+        validate_default=True,  # so "no key at all" is reported with any other missing setting
+        description="More keys for failover, comma-separated; tried in order after GEMINI_API_KEY",
+    )
+    youtube_api_key: SecretStr
+    database_url: SecretStr
+    langfuse_public_key: SecretStr
+    langfuse_secret_key: SecretStr
+    langfuse_base_url: str = "https://cloud.langfuse.com"
+
+    # --- models ---
+    # GEMINI_MODELS=a,b,c sets all three: `a` for every stage, then b, c as fallbacks.
+    gemini_models: Annotated[list[str], NoDecode] = Field(default_factory=list)
+    perceive_model: str = "gemini-2.5-flash"
+    text_model: str = "gemini-2.5-flash"
+    fallback_models: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: ["gemini-2.5-flash-lite", "gemini-3.1-flash-lite"]
+    )
+    llm_rpm_override: float | None = Field(
+        default=None, gt=0, description="None = use the model registry's free-tier RPM"
+    )
+    llm_retry_attempts: int = Field(default=3, ge=1, le=10)
+    llm_timeout_s: float = Field(default=180, gt=0)
+
+    # --- perception ---
+    perceive_fps: float = Field(default=1.0, gt=0, le=24)
+    perceive_media_resolution: MediaResolution = "low"
+    perceive_prompt_version: int = Field(default=1, ge=1)
+    perceive_timeout_s: float = Field(default=600, gt=0, description="Video calls are slow")
+
+    # --- extraction ---
+    extract_prompt_version: int = Field(default=4, ge=1)
+    merge_prompt_version: int = Field(default=5, ge=2)
+    verify_prompt_version: int = Field(default=3, ge=1)
+    qa_prompt_version: int = Field(default=2, ge=1)
+
+    # --- chunking (seconds) ---
+    chunk_min_s: int = Field(default=120, gt=0)
+    chunk_max_s: int = Field(default=300, gt=0)
+
+    features: FeatureFlags = FeatureFlags()
+
+    # --- API + worker ---
+    admin_token: SecretStr | None = Field(
+        default=None, description="Bearer token for /v1/admin/*; unset = admin API disabled"
+    )
+    cors_origins: list[str] = ["http://localhost:3000"]
+
+    # --- sign-in + limits (Supabase Auth; tokens verified with the project's public keys) ---
+    supabase_url: str | None = Field(
+        default=None, description="https://<ref>.supabase.co; unset = sign-in not configured"
+    )
+    owner_emails: Annotated[list[str], NoDecode] = Field(
+        default_factory=list, description="Unlimited accounts: OWNER_EMAILS=a@x.com,b@y.com"
+    )
+    guest_video_minutes: float = Field(default=60, ge=0, description="Per account, in total")
+    guest_token_budget: int = Field(
+        default=1_000_000, ge=0, description="Per account, in total: 1 h of video + practice"
+    )
+    # Measured on real runs: 10.6k-14.8k tokens per video minute (all stages) → 15k charged.
+    tokens_per_video_minute: int = Field(default=15_000, gt=0)
+    # One practice-question set measured 5-10k tokens.
+    qa_token_cost: int = Field(default=8_000, ge=0)
+
+    run_worker: bool = Field(default=True, description="Run the job runner inside the API")
+    worker_poll_s: float = Field(default=2.0, gt=0)
+    job_lease_s: float = Field(default=120.0, gt=0)
+    job_max_attempts: int = Field(default=3, ge=1)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _models_from_list(cls, data: object) -> object:
+        """GEMINI_MODELS is the one place to choose models; explicit per-stage settings win."""
+        if isinstance(data, dict) and data.get("gemini_models"):
+            raw = data["gemini_models"]
+            models = [m.strip() for m in (raw.split(",") if isinstance(raw, str) else raw)]
+            models = [m for m in models if m]
+            if models:
+                data = dict(data)
+                data.setdefault("text_model", models[0])
+                data.setdefault("perceive_model", models[0])
+                data.setdefault("fallback_models", models[1:])
+        return data
+
+    @field_validator("gemini_models", "fallback_models", mode="before")
+    @classmethod
+    def _model_list(cls, value: object) -> object:
+        if isinstance(value, str):
+            return [m.strip() for m in value.split(",") if m.strip()]
+        return value
+
+    @field_validator("gemini_api_key", mode="before")
+    @classmethod
+    def _blank_key_is_unset(cls, value: object) -> object:
+        """`GEMINI_API_KEY=` (empty) with keys in GEMINI_API_KEYS is fine: treated as unset."""
+        return None if isinstance(value, str) and not value.strip() else value
+
+    @field_validator("gemini_api_keys", mode="before")
+    @classmethod
+    def _key_list(cls, value: object) -> object:
+        if isinstance(value, str):
+            return [k.strip() for k in value.split(",") if k.strip()]
+        return value
+
+    @field_validator("gemini_api_keys")
+    @classmethod
+    def _has_a_key(cls, value: list[SecretStr], info: ValidationInfo) -> list[SecretStr]:
+        if not value and info.data.get("gemini_api_key") is None:
+            raise ValueError("set GEMINI_API_KEY or GEMINI_API_KEYS")
+        return value
+
+    @property
+    def gemini_keys(self) -> list[str]:
+        """Every distinct key, GEMINI_API_KEY first. Never logged."""
+        raw = [self.gemini_api_key, *self.gemini_api_keys]
+        return list(dict.fromkeys(k.get_secret_value().strip() for k in raw if k is not None))
+
+    @field_validator(
+        "gemini_api_key",
+        "youtube_api_key",
+        "database_url",
+        "langfuse_public_key",
+        "langfuse_secret_key",
+    )
+    @classmethod
+    def _secret_not_blank(cls, value: SecretStr | None) -> SecretStr | None:
+        if value is not None and not value.get_secret_value().strip():
+            raise ValueError("must not be empty")
+        return value
+
+    @field_validator("owner_emails", mode="before")
+    @classmethod
+    def _emails(cls, value: object) -> object:
+        if isinstance(value, str):
+            value = value.split(",")
+        if isinstance(value, list):
+            return [str(v).strip().lower() for v in value if str(v).strip()]
+        return value
+
+    @field_validator("supabase_url")
+    @classmethod
+    def _no_trailing_slash(cls, value: str | None) -> str | None:
+        return value.rstrip("/") if value else None
+
+    @field_validator("chunk_max_s")
+    @classmethod
+    def _chunk_bounds(cls, value: int, info: ValidationInfo) -> int:
+        min_s = info.data.get("chunk_min_s")
+        if min_s is not None and value < min_s:
+            raise ValueError(f"must be >= chunk_min_s ({min_s})")
+        return value
+
+
+def load_settings(**overrides: object) -> Settings:
+    """Build settings from env/.env, converting validation errors into a readable ConfigError."""
+    try:
+        return Settings(**overrides)  # type: ignore[arg-type]
+    except ValidationError as exc:
+        problems = []
+        for err in exc.errors():
+            env_var = "__".join(str(part) for part in err["loc"]).upper()
+            problems.append(f"  {env_var}: {err['msg']}")
+        raise ConfigError("Invalid configuration:\n" + "\n".join(problems)) from None
+
+
+@lru_cache(maxsize=1)
+def get_settings() -> Settings:
+    return load_settings()
+
+
+def __getattr__(name: str) -> Settings:
+    # Lazy module attribute: importing this module never fails, accessing `settings` validates.
+    if name == "settings":
+        return get_settings()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+class DatabaseSettings(BaseSettings):
+    """Only the DB URL — for migrations and admin tools, which must not need every app secret."""
+
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+
+    database_url: SecretStr
+
+    @classmethod
+    def load(cls) -> DatabaseSettings:
+        try:
+            return cls()  # pyright: ignore[reportCallIssue] - fields come from env / .env
+        except ValidationError:
+            raise ConfigError("Invalid configuration:\n  DATABASE_URL: required") from None

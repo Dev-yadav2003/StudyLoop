@@ -1,0 +1,82 @@
+name: eval
+
+# Runs the eval suite on PRs labelled `eval` (or manually) and compares it with the committed
+# baseline (evals/baseline.json). Posts the comparison as a PR comment and fails when a gated
+# metric (faithfulness, keypoint recall) drops by more than MAX_REGRESSION.
+#
+# Perception is replayed from tests/fixtures (no YouTube access, no video quota); extract,
+# verify and the judges call Gemini for real, so the only real secret is GEMINI_API_KEY.
+# To re-baseline: run `python -m evals.run` locally and commit the record as
+# evals/baseline.json in a reviewed PR.
+
+on:
+  pull_request:
+    types: [labeled, synchronize]
+  workflow_dispatch:
+
+concurrency:
+  group: eval-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  MAX_REGRESSION: "0.05"
+
+jobs:
+  eval:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'eval')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      pull-requests: write
+    env:
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      # Required by Settings but unused on this path (--no-db, no tracing): inert values,
+      # so no database or Langfuse credentials ever reach CI.
+      YOUTUBE_API_KEY: unused-in-ci
+      DATABASE_URL: postgresql://unused:unused@localhost:5432/unused
+      LANGFUSE_PUBLIC_KEY: unused-in-ci
+      LANGFUSE_SECRET_KEY: unused-in-ci
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Check the secret is configured
+        run: |
+          if [ -z "$GEMINI_API_KEY" ]; then
+            echo "::error::Add a GEMINI_API_KEY repository secret to run evals."
+            exit 1
+          fi
+
+      - name: Run evals
+        # --code-exec docker: lecture code is untrusted, so it only runs in a locked-down
+        # container (no network, read-only, memory/CPU/pid limits, nobody user).
+        run: uv run python -m evals.run --no-db --code-exec docker --label "pr-${{ github.event.pull_request.number || 'manual' }}"
+
+      - name: Compare with baseline
+        id: compare
+        run: |
+          set +e
+          uv run python -m evals.compare \
+            --baseline evals/baseline.json "$(ls -t evals/reports/runs/*.json | head -1)" \
+            --max-regression "$MAX_REGRESSION" --out compare.md
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+          cat compare.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Comment on the PR
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh pr comment "${{ github.event.pull_request.number }}" --body-file compare.md --edit-last || gh pr comment "${{ github.event.pull_request.number }}" --body-file compare.md
+
+      - name: Fail on regression
+        if: steps.compare.outputs.exit_code != '0'
+        run: |
+          echo "::error::A gated metric dropped by more than $MAX_REGRESSION — see the comparison."
+          exit 1

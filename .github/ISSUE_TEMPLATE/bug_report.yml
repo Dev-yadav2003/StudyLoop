@@ -1,0 +1,37 @@
+name: Bug report
+description: Something doesn't work as expected
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: input
+    id: video
+    attributes:
+      label: Lecture link (if relevant)
+      placeholder: https://www.youtube.com/watch?v=...
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Sign in as a guest
+        2. Add the lecture to a chapter
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error message / request ID
+      description: The message shown in the app, the `request_id` from the API error, or API log lines. Remove any keys or tokens.
+      render: text
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options: [Notes quality, Practice questions, Library (chapters/lessons), Sign-in / limits, API, Web app, Evals, Other]

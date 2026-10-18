@@ -25,9 +25,15 @@ htmlcov/
 Thumbs.db
 
 # Eval outputs
-evals/reports/*
-!evals/reports/.gitkeep
+evals/reports/
 
 # Frontend
 node_modules/
 .next/
+
+# CLI output
+/notes/
+
+# Local scratch / logs
+*.log
+/scratch/

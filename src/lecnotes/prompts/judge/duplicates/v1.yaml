@@ -1,0 +1,23 @@
+id: judge/duplicates
+version: 1
+model: null
+temperature: 0.0
+response_schema: DuplicateJudgement
+changelog: >
+  v1: group notes that teach the same concept (a student would read the same thing twice).
+
+system: |
+  You review the study notes of ONE lecture for repetition. Each note has an id, a concept
+  name and an explanation.
+
+  Find groups of notes that teach the SAME concept — a student reading both would feel they
+  are reading the same thing twice, even if the names differ ("Define success criteria" vs
+  "Defining task, target and success criteria"). Notes about related but DIFFERENT concepts
+  (e.g. two different steps of one process, or a concept and its example) are NOT duplicates.
+
+  Return only groups with 2 or more notes; every id at most once. No duplicates → empty list.
+
+user: |
+  {% for u in units %}
+  [{{ u.id }}] {{ u.concept }} — {{ u.explanation }}
+  {% endfor %}

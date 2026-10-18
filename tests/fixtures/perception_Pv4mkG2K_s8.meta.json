@@ -1,0 +1,24 @@
+{
+  "fingerprint": {
+    "adapter": "gemini_url",
+    "prompt_id": "perceive",
+    "prompt_version": 1,
+    "model": "gemini-2.5-flash"
+  },
+  "duration_s": 1020.0,
+  "usage": [
+    {
+      "model": "gemini-2.5-flash",
+      "cost_usd": "0.0618424",
+      "prompt_id": "perceive",
+      "tokens_in": 105533,
+      "latency_ms": 75464.34539999609,
+      "tokens_out": 12073,
+      "prompt_version": 1
+    }
+  ],
+  "dropped": [],
+  "repaired": [],
+  "source": "copied from Supabase stage_cache after a local UI run (2026-10-18)",
+  "title": "How to Evaluate LLM Applications: The Complete Workflow | CampusX"
+}
