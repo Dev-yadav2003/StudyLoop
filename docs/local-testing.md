@@ -7,7 +7,7 @@ Langfuse). Deploying to Render/Vercel comes later.
 
 ```bash
 uv sync                          # Python deps
-uv run alembic upgrade head      # Supabase schema → latest (0006)
+uv run alembic upgrade head      # Supabase schema → latest (0007)
 cd apps/web && npm install       # frontend deps (Node ≥ 20.9)
 cp .env.example .env.local       # NEXT_PUBLIC_API_URL=http://127.0.0.1:8000
 ```
@@ -18,7 +18,7 @@ cp .env.example .env.local       # NEXT_PUBLIC_API_URL=http://127.0.0.1:8000
 ## 1. Automated checks (≈ 30 s, no network)
 
 ```bash
-uv run ruff check . && uv run pyright && uv run pytest     # 403 tests incl. real Postgres
+uv run ruff check . && uv run pyright && uv run pytest     # 411 tests incl. real Postgres
 cd apps/web && npm run typecheck && npm run build
 ```
 
@@ -31,7 +31,8 @@ cd apps/web && npm run dev       # UI → http://localhost:3000
 
 Check the API first:
 
-- http://127.0.0.1:8000/readyz → `{"status":"ok","checks":{"database":"ok","worker":"ok"}}`
+- http://127.0.0.1:8000/readyz → `{"status":"ok","checks":{"database":"ok","schema":"ok","worker":"ok"}}`
+  (`schema` names the missing migration if `alembic upgrade head` wasn't run)
 - http://127.0.0.1:8000/docs → interactive API docs
 
 ## 3. Happy path in the browser
@@ -51,6 +52,9 @@ Check the API first:
 6. **Edit notes**: fix a concept name or explanation, **Save** → the notes re-render at once
    (no AI call; an *edited* tag marks the unit). Reload: the edit is still there. Timestamps
    and sources can't be edited. An admin `rerun` replaces the notes, edits included.
+7. **Feedback** (bottom of the notes): 👍 sends at once; 👎 asks what was wrong, then
+   **Send**. It lands in Supabase (`feedback` table) and in Langfuse as a `user_feedback`
+   score on the job's trace.
 
 ## 4. Things worth trying
 
@@ -69,7 +73,10 @@ Admin (needs `ADMIN_TOKEN` in `.env`):
 curl -H "Authorization: Bearer $ADMIN_TOKEN" http://127.0.0.1:8000/v1/admin/jobs/<id>/stages
 curl -X POST -H "Authorization: Bearer $ADMIN_TOKEN" \
   "http://127.0.0.1:8000/v1/admin/jobs/<id>/rerun?from=extract"
+curl -H "Authorization: Bearer $ADMIN_TOKEN" "http://127.0.0.1:8000/v1/admin/feedback?rating=down"
 ```
+
+On Windows PowerShell use `curl.exe` (plain `curl` is a different command there).
 
 ## 5. Where to look when something is off
 
