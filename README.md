@@ -1,5 +1,10 @@
 # StudyLoop
 
+[![CI](https://github.com/Dev-yadav2003/StudyLoop/actions/workflows/ci.yml/badge.svg)](https://github.com/Dev-yadav2003/StudyLoop/actions/workflows/ci.yml)
+![Python 3.12](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white)
+![Next.js 16](https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
 **Turn a YouTube lecture into clean, faithful study notes — with timestamps, practice
 questions, and a library organised in chapters.**
 
@@ -99,8 +104,8 @@ Processing costs about **$0.20–0.25 for a 20-minute lecture** at Gemini's paid
 ### 1. Install
 
 ```bash
-git clone https://github.com/<you>/studyloop.git
-cd studyloop
+git clone https://github.com/Dev-yadav2003/StudyLoop.git
+cd StudyLoop
 uv sync                                  # Python dependencies (pinned by uv.lock)
 cd apps/web && npm install && cd ../..   # web dependencies
 ```
@@ -220,3 +225,12 @@ docs/                  local testing guide, architecture decision records
 - On Gemini's free tier, requests are paced (~10/min), so a lecture takes a few minutes.
 - Next: a hand-made golden set to measure completeness (key-point recall), and hosting
   (API on Render, web on Vercel).
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow (branches, Conventional Commits,
+pull requests) and [SECURITY.md](SECURITY.md) to report a vulnerability.
+
+## License
+
+[MIT](LICENSE)
