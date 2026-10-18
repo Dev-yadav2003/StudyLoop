@@ -18,7 +18,6 @@ from lecnotes.pipeline.stages.merge import (
     MergeOutput,
     MergeStage,
     apply_answer,
-    core_concept,
     merge_spans,
 )
 
@@ -60,11 +59,6 @@ REAL_RUN = [
     unit("u7", "zip() function", 279, code=ZIP_CODE),
     unit("u8", "Manual Indexing for Parallel Iteration", 279),
 ]
-
-
-def test_core_concept_drops_generic_words_and_punctuation() -> None:
-    assert core_concept("`enumerate()` Function (Direct Unpacking)") == "enumerate direct unpacking"
-    assert core_concept("Basic List Iteration") == "list iteration"
 
 
 def test_merge_spans_joins_overlaps_and_keeps_separate_moments() -> None:

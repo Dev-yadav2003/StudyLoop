@@ -1,8 +1,8 @@
 """Duplicate rate (LLM judge): share of notes that repeat a concept another note already
 teaches. For a group of k notes about one concept, k-1 are redundant.
 
-Independent of the merge stage's candidate grouping (fuzzy names / shared code), which
-misses duplicates whose names differ — the case this metric exists to catch.
+Replaced a fuzzy-name `redundancy` metric that used the same signal as the old merge
+stage and so reported 0 while 29% of a lecture's notes were repeats.
 
 The judge is noisy on this task: the same 11 notes were judged 64% redundant once and 9%
 on two re-runs. So it is asked `samples` times (default 3) and the median run is reported.

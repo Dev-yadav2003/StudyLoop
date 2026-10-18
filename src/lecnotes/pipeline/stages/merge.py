@@ -21,8 +21,6 @@ the whole lecture in time order in ONE call:
 
 from __future__ import annotations
 
-import re
-
 from pydantic import BaseModel, Field
 from rapidfuzz import fuzz, process
 
@@ -38,12 +36,6 @@ from lecnotes.timefmt import format_timestamp
 log = get_logger(__name__)
 PROMPT_ID = "merge"
 
-_GENERIC = frozenset({
-    "a", "an", "the", "of", "in", "for", "to", "and", "or", "with", "using", "use",
-    "python", "function", "functions", "method", "methods", "basic", "introduction",
-    "intro", "example", "examples", "concept", "concepts", "overview",
-})  # fmt: skip
-_WORD = re.compile(r"[a-z0-9_]+")
 SPAN_GAP_S = 5.0
 
 
@@ -57,11 +49,6 @@ class MergedNote(BaseModel):
 class MergeOutput(BaseModel):
     sections: list[str] = Field(description="The lecture's sections, in lecture order")
     notes: list[MergedNote]
-
-
-def core_concept(concept: str) -> str:
-    """'`enumerate()` Function (Direct Unpacking)' → 'enumerate direct unpacking'."""
-    return " ".join(w for w in _WORD.findall(concept.lower()) if w not in _GENERIC)
 
 
 def merge_spans(spans: list[VideoSpan]) -> list[VideoSpan]:

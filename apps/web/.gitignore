@@ -3,4 +3,7 @@ node_modules/
 .next-*/
 next-env.d.ts
 .env.local
+# Written by `next dev` for coding agents; regenerated on every run.
+AGENTS.md
+CLAUDE.md
 *.tsbuildinfo

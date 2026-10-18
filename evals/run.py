@@ -36,7 +36,6 @@ from evals.metrics.duplicates import duplicate_rate
 from evals.metrics.faithfulness import faithfulness
 from evals.metrics.keypoint_recall import keypoint_recall
 from evals.metrics.qa_correctness import qa_correctness
-from evals.metrics.redundancy import redundancy
 from evals.metrics.sections import section_fragmentation
 from evals.metrics.wer_terms import term_error_rate, wer
 from lecnotes.adapters.cache.memory import InMemoryStageCache
@@ -80,7 +79,6 @@ HIGHER_IS_BETTER = {
     "wer": False,
     "term_error_rate": False,
     "verify_dropped_rate": False,
-    "redundancy": False,
     "duplicate_rate": False,
     "section_fragmentation": False,
     "qa_correctness": True,
@@ -208,7 +206,6 @@ async def run_eval(
         metrics: dict[str, float | None] = {
             "faithfulness": None,
             "verify_dropped_rate": doc.verify.dropped_rate if doc.verify else None,
-            "redundancy": redundancy(doc.units).rate,
             "duplicate_rate": None,
             "section_fragmentation": section_fragmentation(doc.units).fragmentation,
         }
