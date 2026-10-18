@@ -76,7 +76,7 @@ class Settings(BaseSettings):
     perceive_timeout_s: float = Field(default=600, gt=0, description="Video calls are slow")
 
     # --- extraction ---
-    extract_prompt_version: int = Field(default=3, ge=1)
+    extract_prompt_version: int = Field(default=4, ge=1)
     merge_prompt_version: int = Field(default=5, ge=2)
     verify_prompt_version: int = Field(default=3, ge=1)
     qa_prompt_version: int = Field(default=2, ge=1)

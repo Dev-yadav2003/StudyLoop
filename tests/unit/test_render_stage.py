@@ -189,3 +189,9 @@ def test_headings_inside_explanations_cannot_break_the_outline() -> None:
     assert "**Model evals**\n\n- **Model evals** — test the model" in md
     assert "# a comment, not a heading" in md  # code untouched
     assert "\n## Model evals" not in md
+
+
+def test_code_output_is_shown_under_its_code() -> None:
+    block = CodeBlock(source="print(1 + 1)", language="python", output="2")
+    md = render_markdown(VIDEO, [unit("u1", 0, "Adding", "Basics", code=[block])])
+    assert "```python\nprint(1 + 1)\n```\n\n**Output:**\n\n```text\n2\n```" in md

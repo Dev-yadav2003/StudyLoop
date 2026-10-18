@@ -45,6 +45,9 @@ class Evidence(DomainModel):
 class CodeBlock(DomainModel):
     source: NonEmptyStr
     language: str | None = None
+    output: str | None = Field(
+        default=None, description="What the program printed, as shown in the lecture"
+    )
 
 
 class KnowledgeUnit(DomainModel):

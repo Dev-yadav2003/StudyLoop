@@ -42,7 +42,11 @@ VERBATIM_RATIO = 90.0
 
 class ExtractedCode(BaseModel):
     language: str = Field(description="Programming language, e.g. python; empty if unknown")
-    source: str = Field(description="Code copied verbatim from a cited board state")
+    source: str = Field(description="Only the program, copied verbatim from a cited board state")
+    output: str = Field(
+        default="",
+        description="What the program printed (terminal/notebook output), verbatim; empty if none",
+    )
 
 
 class ExtractedUnit(BaseModel):
@@ -78,7 +82,8 @@ def appears_on(text: str, boards: list[BoardState]) -> bool:
 
 class ExtractStage(Stage[Chunks, ExtractedUnits]):
     name = "extract"
-    version = 3  # v2: output carries the evidence; v3: one span per moment, primary first
+    version = 4  # v2: output carries the evidence; v3: one span per moment, primary first
+    # v4: code output separate from code (checked on the board too); duplicate blocks merged
     input_model = Chunks
     output_model = ExtractedUnits
 
@@ -159,14 +164,25 @@ def to_unit(
         return None
 
     cited_boards = [boards[i] for i in board_ids]
-    code = []
+    code: list[CodeBlock] = []
     for block in raw.code:
         if not block.source.strip():
             continue
-        if appears_on(block.source, cited_boards):
-            code.append(CodeBlock(source=block.source, language=block.language.strip() or None))
-        else:
+        if not appears_on(block.source, cited_boards):
             dropped.append(f"{where}: code not found on cited boards, removed")
+            continue
+        output: str | None = block.output if block.output.strip() else None
+        if output is not None and not appears_on(output, cited_boards):
+            dropped.append(f"{where}: code output not found on cited boards, removed")
+            output = None
+        same = next((c for c in code if _flat(c.source) == _flat(block.source)), None)
+        if same is not None:  # the slide showed the same code twice (e.g. before/after running)
+            if same.output is None and output is not None:
+                code[code.index(same)] = same.model_copy(update={"output": output})
+            continue
+        code.append(
+            CodeBlock(source=block.source, language=block.language.strip() or None, output=output)
+        )
     board_text: str | None = raw.board_text if raw.board_text.strip() else None
     if board_text is not None and not appears_on(board_text, cited_boards):
         dropped.append(f"{where}: board_text not found on cited boards, removed")

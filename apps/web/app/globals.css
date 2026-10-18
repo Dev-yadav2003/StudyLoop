@@ -1268,6 +1268,22 @@ h3 {
   line-height: 1.6;
 }
 
+.code-output {
+  position: relative;
+}
+
+.code-output pre {
+  margin-top: -1px;
+  border-top-style: dashed;
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text-2);
+}
+
+.code-block:has(.code-output) > pre {
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+}
+
 .examples {
   margin-top: 16px;
   padding: 12px 16px;

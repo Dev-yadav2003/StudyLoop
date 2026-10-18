@@ -55,7 +55,9 @@ jobs:
           fi
 
       - name: Run evals
-        run: uv run python -m evals.run --no-db --label "pr-${{ github.event.pull_request.number || 'manual' }}"
+        # --code-exec docker: lecture code is untrusted, so it only runs in a locked-down
+        # container (no network, read-only, memory/CPU/pid limits, nobody user).
+        run: uv run python -m evals.run --no-db --code-exec docker --label "pr-${{ github.event.pull_request.number || 'manual' }}"
 
       - name: Compare with baseline
         id: compare

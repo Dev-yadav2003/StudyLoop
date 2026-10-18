@@ -2,6 +2,7 @@
 
     uv run python -m evals.run --label "extract v2" [--stage extract] [--video ID ...]
                                [--judge-model gemini-3-flash-preview] [--no-db] [--qa]
+                               [--code-exec off|docker|local]
 
 Perception is replayed from `tests/fixtures/perception_<id>.json` (no YouTube access, no
 perception quota); everything after it runs for real, through the stage cache, so only
@@ -19,7 +20,7 @@ import argparse
 import json
 import re
 import subprocess
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -30,6 +31,7 @@ from pydantic import BaseModel, Field
 from evals.golden_set import GOLDEN_DIR, GoldenVideo, load_references, load_videos
 from evals.metrics.board_recall import board_recall
 from evals.metrics.boundary_f1 import boundary_f1, predicted_boundaries
+from evals.metrics.code_exec import DockerRunner, LocalRunner, Runner, check_code
 from evals.metrics.duplicates import duplicate_rate
 from evals.metrics.faithfulness import faithfulness
 from evals.metrics.keypoint_recall import keypoint_recall
@@ -83,8 +85,17 @@ HIGHER_IS_BETTER = {
     "section_fragmentation": False,
     "qa_correctness": True,
     "qa_yield": True,
+    "code_compiles": True,
+    "code_runs": True,
+    "code_output_matches": True,
 }
 QA_COUNT = 5
+# Lecture code is untrusted: it only runs when asked, and in Docker unless told otherwise.
+RUNNERS: dict[str, Callable[[], Runner | None]] = {
+    "off": lambda: None,
+    "docker": DockerRunner,
+    "local": LocalRunner,
+}
 
 
 class VideoResult(BaseModel):
@@ -150,6 +161,7 @@ async def run_eval(
     rerun_from: str | None = None,
     judge_model: str | None = None,
     qa: bool = False,
+    code_runner: Runner | None = None,
 ) -> RunRecord:
     golden_videos = {v.id: v for v in load_videos(golden)}
     ids = list(video_ids) if video_ids else fixture_ids(fixtures)
@@ -209,6 +221,14 @@ async def run_eval(
                 gateway, doc.units, model=judge_model, options=JUDGE_OPTIONS
             )
             metrics["duplicate_rate"] = dups.rate
+        code = check_code(doc.units, code_runner)
+        metrics["code_compiles"] = code.compile_rate
+        metrics["code_runs"] = code.run_rate
+        metrics["code_output_matches"] = code.output_match_rate
+        for res in code.results:
+            if res.status not in ("ok", "skipped") or res.output_matches is False:
+                problem = res.error or ("printed something else" if res.status == "ok" else "")
+                print(f"  code {video_id} {res.unit_id}[{res.index}]: {res.status} {problem}")
         if qa and doc.units:
             qset = await services.qa.generate(
                 job_id=job_id, video=meta, units=doc.units, level=QaLevel.MIXED, count=QA_COUNT
@@ -272,6 +292,7 @@ async def _main(args: argparse.Namespace) -> None:
         "rerun_from": args.stage,
         "judge_model": args.judge_model,
         "qa": args.qa,
+        "code_runner": RUNNERS[args.code_exec](),
     }
     if args.no_db:
         record = await run_eval(settings, gateway, cache=InMemoryStageCache(), **common)
@@ -302,6 +323,12 @@ def main() -> None:
     parser.add_argument("--judge-model", default="gemini-3-flash-preview")
     parser.add_argument("--no-db", action="store_true")
     parser.add_argument("--qa", action="store_true", help="also generate and judge questions")
+    parser.add_argument(
+        "--code-exec",
+        choices=sorted(RUNNERS),
+        default="off",
+        help="run the notes' Python code: docker (CI) or local (reviewed code only)",
+    )
     run_async(_main(parser.parse_args()))
 
 

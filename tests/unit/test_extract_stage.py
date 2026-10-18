@@ -123,6 +123,48 @@ async def test_code_not_on_the_board_is_removed() -> None:
     assert any("code not found" in d for d in out.dropped)
 
 
+async def test_code_output_is_kept_apart_and_checked_on_the_board() -> None:
+    """Real slide: code with its printed output underneath. v3 glued the output into the
+    code (5 of 11 blocks didn't parse); now it is a separate, board-checked field."""
+    shown = f"{CODE}\n0 tom\n1 jerry"
+    chunk = CHUNK.model_copy(
+        update={
+            "board_states": [
+                BoardState(
+                    id="b1", t_first_seen=30, t_last_seen=150, type=BoardType.CODE, text=shown
+                )
+            ]
+        }
+    )
+    good = ExtractedCode(language="python", source=CODE, output="0 tom\n1 jerry")
+    invented = ExtractedCode(language="python", source=CODE, output="0 ada")
+    out, _ = await extract(ExtractOutput(units=[unit(code=[good])]), [chunk])
+    assert [(c.source, c.output) for c in out.units[0].code] == [(CODE, "0 tom\n1 jerry")]
+
+    out, _ = await extract(ExtractOutput(units=[unit(code=[invented])]), [chunk])
+    assert out.units[0].code[0].output is None  # code kept, invented output dropped
+    assert any("output not found" in d for d in out.dropped)
+
+
+async def test_same_code_shown_twice_is_one_block_with_its_output() -> None:
+    shown = f"{CODE}\n0 tom"
+    chunk = CHUNK.model_copy(
+        update={
+            "board_states": [
+                BoardState(
+                    id="b1", t_first_seen=30, t_last_seen=150, type=BoardType.CODE, text=shown
+                )
+            ]
+        }
+    )
+    blocks = [
+        ExtractedCode(language="python", source=CODE),
+        ExtractedCode(language="python", source=CODE, output="0 tom"),
+    ]
+    out, _ = await extract(ExtractOutput(units=[unit(code=blocks)]), [chunk])
+    assert [(c.source, c.output) for c in out.units[0].code] == [(CODE, "0 tom")]
+
+
 async def test_board_text_must_be_verbatim_from_a_cited_board() -> None:
     out, _ = await extract(
         ExtractOutput(

@@ -382,6 +382,11 @@ export interface components {
             source: string;
             /** Language */
             language?: string | null;
+            /**
+             * Output
+             * @description What the program printed, as shown in the lecture
+             */
+            output?: string | null;
         };
         /** ErrorBody */
         ErrorBody: {

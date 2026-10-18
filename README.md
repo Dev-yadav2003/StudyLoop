@@ -49,7 +49,7 @@ uv run python scripts/new_golden_video.py <url> --type code --terms "zip,enumera
 uv run python scripts/try_perceive.py <url> --duration MM:SS   # perception fixture
 
 uv run python -m evals.perception_report    # WER, board recall, boundary F1
-uv run python -m evals.run --label "what changed" [--stage extract] [--qa]
+uv run python -m evals.run --label "what changed" [--stage extract] [--qa] [--code-exec docker]
 uv run python -m evals.compare --latest     # before/after: metrics, stages, latency, cost
 ```
 

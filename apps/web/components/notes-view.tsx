@@ -177,6 +177,12 @@ function UnitCard({
               <pre>
                 <code>{block.source}</code>
               </pre>
+              {block.output && (
+                <div className="code-output">
+                  <span className="lang">Output</span>
+                  <pre>{block.output}</pre>
+                </div>
+              )}
             </div>
           ))}
           {examples.length > 0 && (
