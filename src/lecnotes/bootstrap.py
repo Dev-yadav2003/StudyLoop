@@ -43,6 +43,7 @@ from lecnotes.ports.metrics import StageRunSink
 from lecnotes.ports.perception import Perceiver
 from lecnotes.ports.video_catalog import VideoCatalog
 from lecnotes.storage.db import create_engine
+from lecnotes.storage.repositories.feedback import FeedbackRepository
 from lecnotes.storage.repositories.notes import NotesRepository
 from lecnotes.storage.repositories.stage_runs import PostgresStageRunSink
 
@@ -145,6 +146,10 @@ class ApiContainer:
     services: Services
     runner: JobRunner
     runner_task: asyncio.Task[None] | None = None
+
+    @property
+    def feedback(self) -> FeedbackRepository:
+        return FeedbackRepository(self.engine)
 
 
 @asynccontextmanager

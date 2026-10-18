@@ -10,6 +10,7 @@ import remarkGfm from "remark-gfm";
 import { api, exportUrl, toApiError } from "@/lib/api";
 
 import { EditUnits } from "./edit-units";
+import { NotesFeedback } from "./feedback";
 import { PracticeQuestions } from "./practice";
 
 export default function NotesPage() {
@@ -75,6 +76,7 @@ export default function NotesPage() {
         </div>
       )}
       {notes.data.units.length > 0 && <PracticeQuestions notesId={notes.data.id} />}
+      <NotesFeedback notesId={notes.data.id} />
     </article>
   );
 }

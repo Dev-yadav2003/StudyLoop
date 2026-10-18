@@ -272,3 +272,14 @@ textarea.mono {
   font-family: ui-monospace, "Cascadia Code", Menlo, monospace;
   font-size: 0.9em;
 }
+
+.feedback {
+  margin-top: 24px;
+  display: grid;
+  gap: 12px;
+}
+
+.feedback form {
+  display: grid;
+  gap: 8px;
+}

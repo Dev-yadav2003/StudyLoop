@@ -23,6 +23,7 @@ from sqlalchemy import (
     Index,
     MetaData,
     Numeric,
+    SmallInteger,
     Text,
     UniqueConstraint,
     func,
@@ -187,3 +188,22 @@ class UnitRow(Base):
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
 
     __table_args__ = (UniqueConstraint("notes_id", "unit_key"),)
+
+
+class FeedbackRow(Base):
+    """Thumbs up/down (+ optional reason) on notes or one of their units (step 9.3). Also sent
+    to Langfuse as a score on the job's trace."""
+
+    __tablename__ = "feedback"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    notes_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("notes.id", ondelete="CASCADE"), index=True
+    )
+    unit_key: Mapped[str | None]
+    rating: Mapped[int] = mapped_column(SmallInteger)
+    reason: Mapped[str | None]
+    trace_id: Mapped[str | None]
+    created_at: Mapped[datetime] = _created()
+
+    __table_args__ = (CheckConstraint("rating IN (-1, 1)", name="rating"),)

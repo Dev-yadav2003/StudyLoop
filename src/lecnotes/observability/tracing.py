@@ -26,10 +26,11 @@ from langfuse.langchain import CallbackHandler
 
 from lecnotes import __version__
 from lecnotes.config import Settings
-from lecnotes.observability.logging import bind_context
+from lecnotes.observability.logging import bind_context, get_logger
 
 TRACE_NAME = "lecture-notes"
 
+log = get_logger(__name__)
 _client: Langfuse | None = None
 _public_key: str | None = None
 
@@ -123,6 +124,36 @@ def langchain_callbacks() -> list[BaseCallbackHandler]:
     if _client is None:
         return []
     return [GenerationsOnlyHandler(public_key=_public_key)]
+
+
+def score(
+    name: str,
+    value: float,
+    *,
+    trace_id: str | None = None,
+    session_id: str | None = None,
+    comment: str | None = None,
+    metadata: dict[str, Any] | None = None,
+) -> bool:
+    """Attach a numeric score to a trace (or, without one, to the job's session). Best effort:
+    returns False when tracing is off or Langfuse refuses — a score is never worth failing
+    the request that produced it."""
+    if _client is None or (trace_id is None and session_id is None):
+        return False
+    try:
+        _client.create_score(
+            name=name,
+            value=value,
+            trace_id=trace_id,
+            session_id=None if trace_id else session_id,
+            data_type="NUMERIC",
+            comment=comment,
+            metadata=metadata,
+        )
+    except Exception as exc:
+        log.warning("tracing.score_failed", score=name, error=type(exc).__name__)
+        return False
+    return True
 
 
 def shutdown_tracing() -> None:

@@ -9,6 +9,7 @@ from fastapi.responses import PlainTextResponse
 from apps.api.deps import Container
 from apps.api.schemas import (
     ErrorOut,
+    FeedbackOut,
     NotesOut,
     QaCreate,
     QuestionOut,
@@ -16,9 +17,11 @@ from apps.api.schemas import (
     TimestampLink,
     UnitRef,
 )
-from lecnotes.domain import UnitEdit
+from lecnotes.domain import Feedback, UnitEdit
+from lecnotes.observability.tracing import score
 from lecnotes.pipeline.notes_editor import UnitNotFound
 from lecnotes.storage.repositories.notes import StoredNotes
+from lecnotes.storage.repositories.stage_runs import latest_trace_id
 from lecnotes.timefmt import format_timestamp
 
 router = APIRouter(prefix="/v1/notes", tags=["notes"])
@@ -126,3 +129,28 @@ async def practice_questions(notes_id: UUID, body: QaCreate, c: Container) -> Qu
             for q in qset.questions
         ],
     )
+
+
+@router.post(
+    "/{notes_id}/feedback",
+    response_model=FeedbackOut,
+    status_code=201,
+    responses={404: {"model": ErrorOut}, 422: {"model": ErrorOut}},
+)
+async def give_feedback(notes_id: UUID, body: Feedback, c: Container) -> FeedbackOut:
+    """Thumbs up/down (+ optional reason) on the notes, or on one unit with `unit_id`. Stored,
+    and attached to the job's Langfuse trace as a `user_feedback` score."""
+    stored = await _load(c, notes_id)
+    if body.unit_id is not None and body.unit_id not in {u.id for u in stored.document.units}:
+        raise HTTPException(404, "Unit not found in these notes.")
+    trace_id = await latest_trace_id(c.engine, stored.job_id)
+    feedback_id, created_at = await c.feedback.add(stored.id, body, trace_id=trace_id)
+    scored = score(
+        "user_feedback",
+        body.rating,
+        trace_id=trace_id,
+        session_id=str(stored.job_id),
+        comment=body.reason,
+        metadata={"notes_id": str(stored.id), "unit_id": body.unit_id, "feedback_id": feedback_id},
+    )
+    return FeedbackOut(id=feedback_id, created_at=created_at, scored=scored)

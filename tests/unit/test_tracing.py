@@ -89,3 +89,35 @@ def test_get_langfuse_before_init_fails_clearly() -> None:
     tracing.shutdown_tracing()
     with pytest.raises(TracingNotInitialized):
         tracing.get_langfuse()
+
+
+class _ScoreRecorder:
+    def __init__(self, fail: bool = False) -> None:
+        self.calls: list[dict[str, object]] = []
+        self.fail = fail
+
+    def create_score(self, **kwargs: object) -> None:
+        if self.fail:
+            raise RuntimeError("langfuse down")
+        self.calls.append(kwargs)
+
+
+def test_score_goes_to_the_trace_or_falls_back_to_the_session(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    rec = _ScoreRecorder()
+    monkeypatch.setattr(tracing, "_client", rec)
+    assert tracing.score("user_feedback", -1, trace_id="t1", session_id="job", comment="why")
+    assert tracing.score("user_feedback", 1, session_id="job")
+    assert [(c["trace_id"], c["session_id"], c["value"]) for c in rec.calls] == [
+        ("t1", None, -1),
+        (None, "job", 1),
+    ]
+    assert rec.calls[0]["comment"] == "why"
+    assert not tracing.score("user_feedback", 1)  # nothing to attach it to
+
+
+def test_score_is_best_effort(monkeypatch: pytest.MonkeyPatch) -> None:
+    assert not tracing.score("user_feedback", 1, trace_id="t1")  # tracing off
+    monkeypatch.setattr(tracing, "_client", _ScoreRecorder(fail=True))
+    assert not tracing.score("user_feedback", 1, trace_id="t1")  # Langfuse error swallowed

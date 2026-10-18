@@ -1,13 +1,19 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query
 
 from apps.api.deps import Admin, Container
 from apps.api.routers.jobs import job_out
-from apps.api.schemas import ErrorOut, RerunOut, StageRunOut
+from apps.api.schemas import (
+    ErrorOut,
+    FeedbackItemOut,
+    FeedbackListOut,
+    RerunOut,
+    StageRunOut,
+)
 from lecnotes.pipeline.registry import VIDEO_STAGE_ORDER
 from lecnotes.storage.repositories.stage_runs import runs_for_job
 
@@ -54,3 +60,33 @@ async def rerun(
     if job is None:
         raise HTTPException(409, "The job is running; wait for it to finish.")
     return RerunOut(job=await job_out(c, job), rerun_from=from_stage)
+
+
+@router.get("/feedback", response_model=FeedbackListOut, responses=ERRORS)
+async def feedback(
+    c: Container,
+    limit: int = Query(50, ge=1, le=500),
+    rating: Literal["up", "down"] | None = Query(None, description="only 👍 or only 👎"),
+) -> FeedbackListOut:
+    """Recent reader feedback, newest first, with all-time totals."""
+    totals = await c.feedback.summary()
+    wanted = None if rating is None else 1 if rating == "up" else -1
+    items = await c.feedback.recent(limit=limit, rating=wanted)
+    return FeedbackListOut(
+        up=totals.up,
+        down=totals.down,
+        items=[
+            FeedbackItemOut(
+                id=f.id,
+                notes_id=f.notes_id,
+                video_id=f.video_id,
+                title=f.title,
+                rating=f.feedback.rating,
+                reason=f.feedback.reason,
+                unit_id=f.feedback.unit_id,
+                trace_id=f.trace_id,
+                created_at=f.created_at,
+            )
+            for f in items
+        ],
+    )

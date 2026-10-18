@@ -97,3 +97,16 @@ def latest_per_stage(runs: list[StageRun]) -> dict[str, StageRun]:
     for run in runs:  # oldest first, so later runs overwrite
         latest[run.stage] = run
     return latest
+
+
+async def latest_trace_id(engine: AsyncEngine, job_id: uuid.UUID) -> str | None:
+    """The Langfuse trace of the job's most recent traced stage run (the run that produced —
+    or last re-rendered — its notes)."""
+    stmt = (
+        select(StageRunRow.trace_id)
+        .where(StageRunRow.job_id == job_id, StageRunRow.trace_id.is_not(None))
+        .order_by(StageRunRow.id.desc())
+        .limit(1)
+    )
+    async with engine.connect() as conn:
+        return (await conn.execute(stmt)).scalar()

@@ -9,6 +9,7 @@ from lecnotes.domain.evidence import (
     ValidationIssue,
     VerifySummary,
 )
+from lecnotes.domain.feedback import Feedback, Rating
 from lecnotes.domain.job import (
     Job,
     JobOptions,
@@ -38,6 +39,7 @@ __all__ = [
     "CodeBlock",
     "Evidence",
     "ExtractedUnits",
+    "Feedback",
     "Job",
     "JobOptions",
     "JobStatus",
@@ -51,6 +53,7 @@ __all__ = [
     "Question",
     "QuestionLevel",
     "QuestionSet",
+    "Rating",
     "StageRun",
     "StageRunStatus",
     "SubjectPreset",

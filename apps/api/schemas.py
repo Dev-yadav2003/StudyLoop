@@ -122,3 +122,27 @@ class QuestionOut(BaseModel):
 class QuestionSetOut(BaseModel):
     notes_id: UUID
     questions: list[QuestionOut]
+
+
+class FeedbackOut(BaseModel):
+    id: int
+    created_at: datetime
+    scored: bool = Field(description="Also recorded as a Langfuse score on the job's trace")
+
+
+class FeedbackItemOut(BaseModel):
+    id: int
+    notes_id: UUID
+    video_id: str
+    title: str
+    rating: int
+    reason: str | None
+    unit_id: str | None
+    trace_id: str | None
+    created_at: datetime
+
+
+class FeedbackListOut(BaseModel):
+    up: int
+    down: int
+    items: list[FeedbackItemOut]

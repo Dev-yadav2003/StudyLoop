@@ -161,6 +161,43 @@ async def test_concurrent_edit_is_rejected_not_lost(api: Api, engine: AsyncEngin
     assert current.document.units[0].explanation == "First edit."
 
 
+async def test_feedback_is_stored_and_listed_for_admins(api: Api) -> None:
+    _, notes = await _finished_notes(api)
+    path = f"/v1/notes/{notes['id']}/feedback"
+
+    up = await api.client.post(path, json={"rating": 1})
+    assert up.status_code == 201
+    assert up.json()["scored"] is False  # tracing is off in tests
+    down = await api.client.post(
+        path, json={"rating": -1, "reason": "  Wrong output shown  ", "unit_id": UNIT_ID}
+    )
+    assert down.status_code == 201
+
+    listed = (await api.client.get("/v1/admin/feedback", headers=ADMIN)).json()
+    assert (listed["up"], listed["down"]) == (1, 1)
+    newest = listed["items"][0]
+    assert (newest["rating"], newest["reason"], newest["unit_id"]) == (
+        -1,
+        "Wrong output shown",
+        UNIT_ID,
+    )
+    assert (newest["video_id"], newest["title"]) == (VID, "Python Iteration Tools")
+    only_down = (await api.client.get("/v1/admin/feedback?rating=down", headers=ADMIN)).json()
+    assert [i["rating"] for i in only_down["items"]] == [-1]
+    assert (await api.client.get("/v1/admin/feedback")).status_code == 401
+
+
+async def test_feedback_validation(api: Api) -> None:
+    _, notes = await _finished_notes(api)
+    path = f"/v1/notes/{notes['id']}/feedback"
+    for bad in ({"rating": 0}, {"rating": 5}, {}, {"rating": 1, "reason": "x" * 1001}):
+        assert (await api.client.post(path, json=bad)).status_code == 422
+    unknown = await api.client.post(path, json={"rating": 1, "unit_id": "nope"})
+    assert unknown.status_code == 404
+    missing = await api.client.post(f"/v1/notes/{uuid4()}/feedback", json={"rating": 1})
+    assert missing.status_code == 404
+
+
 async def test_same_video_returns_the_existing_job(api: Api) -> None:
     first = await api.client.post("/v1/jobs", json={"url": URL})
     again = await api.client.post("/v1/jobs", json={"url": f"https://youtu.be/{VID}?t=10"})

@@ -33,7 +33,8 @@ export interface paths {
         };
         /**
          * Readyz
-         * @description Readiness: the database answers and (if enabled) the job runner is alive.
+         * @description Readiness: the database answers and is migrated to the schema this code expects, and
+         *     (if enabled) the job runner is alive. A missing migration shows up here, not as 500s.
          */
         get: operations["readyz_readyz_get"];
         put?: never;
@@ -159,6 +160,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/notes/{notes_id}/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Give Feedback
+         * @description Thumbs up/down (+ optional reason) on the notes, or on one unit with `unit_id`. Stored,
+         *     and attached to the job's Langfuse trace as a `user_feedback` score.
+         */
+        post: operations["give_feedback_v1_notes__notes_id__feedback_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/jobs/{job_id}/stages": {
         parameters: {
             query?: never;
@@ -194,6 +216,26 @@ export interface paths {
          *     after it are recomputed. Without `from`, cached stages are reused as they are.
          */
         post: operations["rerun_v1_admin_jobs__job_id__rerun_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Feedback
+         * @description Recent reader feedback, newest first, with all-time totals.
+         */
+        get: operations["feedback_v1_admin_feedback_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -241,6 +283,76 @@ export interface components {
             segment_ids?: string[];
             /** Board State Ids */
             board_state_ids?: string[];
+        };
+        /**
+         * Feedback
+         * @description A reader's verdict on finished notes (or one unit of them): thumbs up/down + why.
+         */
+        Feedback: {
+            /**
+             * Rating
+             * @description 1 = useful, -1 = not useful
+             * @enum {integer}
+             */
+            rating: -1 | 1;
+            /** Reason */
+            reason?: string | null;
+            /**
+             * Unit Id
+             * @description The unit it is about; None = all
+             */
+            unit_id?: string | null;
+        };
+        /** FeedbackItemOut */
+        FeedbackItemOut: {
+            /** Id */
+            id: number;
+            /**
+             * Notes Id
+             * Format: uuid
+             */
+            notes_id: string;
+            /** Video Id */
+            video_id: string;
+            /** Title */
+            title: string;
+            /** Rating */
+            rating: number;
+            /** Reason */
+            reason: string | null;
+            /** Unit Id */
+            unit_id: string | null;
+            /** Trace Id */
+            trace_id: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** FeedbackListOut */
+        FeedbackListOut: {
+            /** Up */
+            up: number;
+            /** Down */
+            down: number;
+            /** Items */
+            items: components["schemas"]["FeedbackItemOut"][];
+        };
+        /** FeedbackOut */
+        FeedbackOut: {
+            /** Id */
+            id: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Scored
+             * @description Also recorded as a Langfuse score on the job's trace
+             */
+            scored: boolean;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -868,6 +980,50 @@ export interface operations {
             };
         };
     };
+    give_feedback_v1_notes__notes_id__feedback_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                notes_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Feedback"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeedbackOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
     job_stages_v1_admin_jobs__job_id__stages_get: {
         parameters: {
             query?: never;
@@ -996,6 +1152,68 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    feedback_v1_admin_feedback_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                /** @description only 👍 or only 👎 */
+                rating?: ("up" | "down") | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeedbackListOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
