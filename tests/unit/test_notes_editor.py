@@ -82,7 +82,7 @@ async def test_editor_rerenders_through_the_orchestrator_without_ai() -> None:
         job_id=job_id, doc=DOC, unit_id="u2", edit=UnitEdit(concept="enumerate()")
     )
 
-    assert "### enumerate() ·" in doc.markdown
+    assert "### enumerate()\n" in doc.markdown
     assert "### enumrate()" not in doc.markdown
     assert [u.concept for u in doc.units] == ["zip()", "enumerate()"]
     assert doc.markdown == render_markdown(VIDEO, doc.units)

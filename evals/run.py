@@ -107,15 +107,16 @@ class RunRecord(BaseModel):
 
 
 def video_meta(video: GoldenVideo, perception: PerceptionResult, meta_path: Path) -> VideoMeta:
-    """Duration from the fixture's .meta.json, else the last evidence timestamp."""
-    duration = None
-    if meta_path.is_file():
-        duration = json.loads(meta_path.read_text(encoding="utf-8")).get("duration_s")
+    """Title and duration from the fixture's .meta.json (the golden entry's title wins), else
+    the video id and the last evidence timestamp. The title matters: prompts see it."""
+    meta = json.loads(meta_path.read_text(encoding="utf-8")) if meta_path.is_file() else {}
+    duration = meta.get("duration_s")
     if not duration:
         ends = [s.end_s for s in perception.segments]
         ends += [b.t_last_seen for b in perception.board_states]
         duration = max(ends, default=0) + 1
-    return VideoMeta(video_id=video.id, title=video.title, duration_s=duration)
+    title = video.title if video.title != video.id else meta.get("title", video.id)
+    return VideoMeta(video_id=video.id, title=title, duration_s=duration)
 
 
 def fixture_ids(fixtures: Path) -> list[str]:

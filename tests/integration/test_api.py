@@ -117,8 +117,8 @@ async def test_edit_unit_rerenders_and_persists(api: Api) -> None:
     assert edited.status_code == 200
     body = edited.json()
     assert (body["edited_units"], body["revision"]) == ([UNIT_ID], 1)
-    assert "### enumerate(iterable) ·" in body["markdown"]
-    assert "- enumerate('ab')" in body["markdown"]
+    assert "### enumerate(iterable)\n" in body["markdown"]
+    assert "**Example:** enumerate('ab')" in body["markdown"]
     unit = body["units"][0]
     assert unit["spans"] == notes["units"][0]["spans"]  # provenance untouched
     assert unit["evidence"] == notes["units"][0]["evidence"]

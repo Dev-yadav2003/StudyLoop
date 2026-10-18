@@ -48,7 +48,7 @@ class ExtractedCode(BaseModel):
 class ExtractedUnit(BaseModel):
     section: str = Field(description="Short topic heading this unit belongs under")
     concept: str = Field(description="Short name of the concept")
-    explanation: str = Field(description="What the teacher said about it, 1-4 sentences")
+    explanation: str = Field(description="The study note for this concept, in Markdown")
     examples: list[str] = Field(description="Examples the teacher gave; empty if none")
     board_text: str = Field(description="Relevant board text copied verbatim; empty if none")
     code: list[ExtractedCode] = Field(description="Code copied verbatim from the board")

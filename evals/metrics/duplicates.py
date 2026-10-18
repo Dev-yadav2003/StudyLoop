@@ -3,6 +3,9 @@ teaches. For a group of k notes about one concept, k-1 are redundant.
 
 Independent of the merge stage's candidate grouping (fuzzy names / shared code), which
 misses duplicates whose names differ — the case this metric exists to catch.
+
+The judge is noisy on this task: the same 11 notes were judged 64% redundant once and 9%
+on two re-runs. So it is asked `samples` times (default 3) and the median run is reported.
 """
 
 from __future__ import annotations
@@ -46,9 +49,30 @@ async def duplicate_rate(
     model: str | None = None,
     prompt_version: int = 1,
     options: ModelOptions | None = None,
+    samples: int = 3,
 ) -> DuplicateScore:
     if len(units) < 2:
         return DuplicateScore(units=len(units), redundant=0)
+    runs = [
+        await _judge_once(gateway, units, model, prompt_version, options) for _ in range(samples)
+    ]
+    runs.sort(key=lambda r: r.redundant)
+    median = runs[len(runs) // 2]
+    return DuplicateScore(
+        units=median.units,
+        redundant=median.redundant,
+        groups=median.groups,
+        usage=[u for r in runs for u in r.usage],
+    )
+
+
+async def _judge_once(
+    gateway: LLMGateway,
+    units: list[KnowledgeUnit],
+    model: str | None,
+    prompt_version: int,
+    options: ModelOptions | None,
+) -> DuplicateScore:
     prompt = load(PROMPT_ID, version=prompt_version, units=units)
     result = await gateway.generate_structured(
         prompt, DuplicateJudgement, model=model, options=options

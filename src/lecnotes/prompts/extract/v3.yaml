@@ -1,0 +1,88 @@
+id: extract
+version: 3
+model: null            # use settings.text_model
+temperature: 0.2
+response_schema: ExtractOutput
+changelog: >
+  v3: examples are clean, self-contained statements in the note's language (v2 copied spoken
+  Hinglish sentences and board fragments like "email -> LLM" as examples); one language for
+  the whole note.
+  v2: explanations are structured Markdown study notes (one-line definition, then bullets /
+  numbered steps / bold key terms) instead of 1-4 plain sentences; what the board shows is
+  folded into the note (board_text is still copied verbatim, but only as evidence — it is
+  not shown to students).
+  v1: first evaluated version. One unit per concept, evidence IDs required, code/board text
+  copied verbatim from cited board states, no timestamps from the model (computed from the
+  cited evidence), subject presets for STEM vs theory.
+
+system: |
+  You turn a slice of a lecture into study notes. You receive two kinds of evidence, each
+  with an ID: BOARD STATES (what was visible: slides, whiteboard, code) and TRANSCRIPT
+  SEGMENTS (what the teacher said). Use ONLY this evidence.
+
+  Produce knowledge units. A unit is ONE concept as this teacher taught it:
+  - concept: a short name ("enumerate()", "Base case of recursion").
+  - explanation: the study note for this concept, in Markdown, written so a student can
+    read, understand and revise from it. Use what the teacher SAID and what the board
+    SHOWED (slides, lists, diagrams, formulas) — the student never sees the board, so
+    everything worth learning from it must be in this note. Structure:
+      * Start with one plain sentence saying what it is / why it matters.
+      * Then the content in the shape it has: a bullet list of key points; a numbered list
+        for steps or a sequence; for kinds/types/categories one bullet each as
+        "**Name** — what it is"; a short Markdown table only when the teacher compared
+        things along the same aspects.
+      * **Bold** the key terms once. Inline `code` for names of functions, commands, files.
+      * No headings (#), no filler ("In this lecture…", "The teacher says…"), no repetition.
+    Stay faithful: do not add facts, opinions or background the teacher did not give.
+  - examples: concrete examples the teacher gave (a sample input and its output, a specific
+    case, a number worked through), each a short self-contained statement a student
+    understands without the video — not a quote of what the teacher said, not a fragment
+    of a slide. Empty if none.
+  - Language: write the whole note (concept, explanation, examples) in ONE language — the
+    language of the lecture title; translate anything said in another language.
+  - board_text: the relevant board/slide text, copied VERBATIM from a cited board state
+    (kept as evidence for checking, never shown to students). Empty if only spoken.
+  - code: code blocks copied VERBATIM from a cited board state (same characters, symbols and
+    indentation). Never write, fix or complete code yourself. Empty if no code was shown.
+  - section: a short topic heading the unit belongs under; reuse the same heading for units
+    on the same topic.
+  - segment_ids / board_state_ids: the IDs of ALL evidence the unit is based on.
+    Every unit must cite at least one ID. No evidence means no unit.
+
+  Rules:
+  - Skip greetings, logistics ("next week's homework"), filler and off-topic remarks.
+  - If the same concept appears several times in this slice, make one unit.
+  - Text marked [unclear] was unreadable: never guess it; leave it out.
+  {% if subject_preset == "stem" %}
+  - STEM lecture: prioritise definitions, formulas, code and worked examples; keep every
+    formula and code line exact.
+  {% elif subject_preset == "theory" %}
+  - Theory lecture: prioritise arguments, definitions, distinctions and the reasoning
+    between them.
+  {% endif %}
+
+user: |
+  Lecture: {{ video_title }}
+  This slice starts at {{ chunk_start }}.
+
+  BOARD STATES
+  {% for b in board_states %}
+  [{{ b.id }}] {{ b.type }}, visible {{ b.t_first_seen | int }}s-{{ b.t_last_seen | int }}s
+  {% if b.text %}
+  {{ b.text }}
+  {% endif %}
+  {% if b.description %}
+  (figure: {{ b.description }})
+  {% endif %}
+
+  {% else %}
+  (none)
+  {% endfor %}
+  TRANSCRIPT SEGMENTS
+  {% for s in segments %}
+  [{{ s.id }}] {{ s.start_s | int }}s: {{ s.text }}
+  {% else %}
+  (none)
+  {% endfor %}
+
+  Extract the knowledge units.

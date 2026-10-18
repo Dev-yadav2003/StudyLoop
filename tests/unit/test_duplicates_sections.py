@@ -29,7 +29,8 @@ async def test_duplicate_rate_counts_k_minus_one_per_group_and_ignores_bad_ids()
     fake = FakeLLM({"judge/duplicates": judgement})
     units = [unit(i, n * 10) for n, i in enumerate("abcde")]
 
-    score = await duplicate_rate(LLMGateway(fake.factory, default_model="gemini-2.5-flash"), units)
+    gateway = LLMGateway(fake.factory, default_model="gemini-2.5-flash")
+    score = await duplicate_rate(gateway, units, samples=1)
 
     assert score.groups == [["a", "c", "e"]]
     assert (score.redundant, score.rate) == (2, 2 / 5)
@@ -58,3 +59,18 @@ def test_returning_to_a_section_is_fragmentation() -> None:
     score = section_fragmentation(units)
     assert (score.runs, score.sections) == (4, 3)
     assert score.fragmentation == 1 / 3
+
+
+async def test_duplicate_rate_reports_the_median_of_noisy_judge_runs() -> None:
+    units = [unit(i, n * 10) for n, i in enumerate("abcd")]
+    none = DuplicateJudgement(groups=[])
+    one = DuplicateJudgement(groups=[DuplicateGroup(unit_ids=["a", "b"], concept="x")])
+    wild = DuplicateJudgement(groups=[DuplicateGroup(unit_ids=["a", "b", "c", "d"], concept="y")])
+    fake = FakeLLM({"judge/duplicates": [wild, one, none]})
+    gateway = LLMGateway(fake.factory, default_model="gemini-2.5-flash")
+
+    score = await duplicate_rate(gateway, units)
+
+    assert len(fake.calls) == 3
+    assert (score.redundant, score.groups) == (1, [["a", "b"]])
+    assert len(score.usage) == 3

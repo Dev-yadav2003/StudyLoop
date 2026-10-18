@@ -73,7 +73,7 @@ def test_render_snapshot() -> None:
 
 def test_sections_ordered_by_first_appearance_units_by_time() -> None:
     md = render_markdown(VIDEO, UNITS)
-    order = [md.index(s) for s in ("## Iteration tools", "## Notes", "## Wrap-up")]
+    order = [md.index(s) for s in ("## 1. Iteration tools", "## 2. Notes", "## 3. Wrap-up")]
     assert order == sorted(order)
     assert md.index("### enumerate()") < md.index("### zip()")
 
@@ -128,6 +128,64 @@ def test_primary_link_first_then_other_moments() -> None:
     )
     md = render_markdown(VIDEO, [taught])
     assert (
-        f"### enumerate() · [03:29](https://youtu.be/{VID}?t=209) "
-        f"(also [00:26](https://youtu.be/{VID}?t=26))"
+        f"### enumerate()\n\n<sub>▶ [03:29](https://youtu.be/{VID}?t=209) "
+        f"· also [00:26](https://youtu.be/{VID}?t=26)</sub>"
     ) in md
+
+
+def test_board_text_is_evidence_not_notes() -> None:
+    md = render_markdown(VIDEO, UNITS)
+    assert "enumerate(iterable, start=0)" not in md  # u1's board_text
+    assert "On the board" not in md
+
+
+def test_lists_are_separated_from_paragraphs() -> None:
+    """Real v2 output: the sentence after the list was swallowed into its last bullet."""
+    text = (
+        "There are two main types:\n*   **Model Evals**\n*   **Application Evals**\n"
+        "Model Evals test the model.\n1. Define\n   still step one\n2. Build\nDone."
+    )
+    md = render_markdown(VIDEO, [unit("u1", 0, "LLM evals", "Evals", explanation=text)])
+    assert (
+        "There are two main types:\n\n*   **Model Evals**\n*   **Application Evals**\n\n"
+        "Model Evals test the model.\n\n1. Define\n   still step one\n2. Build\n\nDone."
+    ) in md
+
+
+@pytest.mark.parametrize(
+    ("glued", "expected"),
+    [
+        (  # real merge-v3 output
+            "The workflow:1.  **Define Task**: what to test.2.  **Build a Dataset**: rows.",
+            "The workflow:\n\n1.  **Define Task**: what to test.\n2.  **Build a Dataset**: rows.",
+        ),
+        (
+            "Three options: *   **Automated** — a script. *   **Human** — a person.",
+            "Three options:\n\n*   **Automated** — a script.\n*   **Human** — a person.",
+        ),
+    ],
+)
+def test_lists_glued_into_one_line_are_split(glued: str, expected: str) -> None:
+    md = render_markdown(VIDEO, [unit("u1", 0, "Workflow", "W", explanation=glued)])
+    assert expected in md
+
+
+def test_prose_with_one_bold_term_after_a_period_is_not_split() -> None:
+    text = "Use it carefully. 2 **Notes** follow below."
+    md = render_markdown(VIDEO, [unit("u1", 0, "C", "W", explanation=text)])
+    assert text in md
+
+
+def test_headings_inside_explanations_cannot_break_the_outline() -> None:
+    note = unit(
+        "u1",
+        10,
+        "Types of LLM evals",
+        "Evals",
+        explanation="Two kinds.\n\n## Model evals\n- **Model evals** — test the model\n"
+        "```python\n# a comment, not a heading\n```",
+    )
+    md = render_markdown(VIDEO, [note])
+    assert "**Model evals**\n\n- **Model evals** — test the model" in md
+    assert "# a comment, not a heading" in md  # code untouched
+    assert "\n## Model evals" not in md
