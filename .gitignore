@@ -37,4 +37,3 @@ node_modules/
 # Local scratch / logs
 *.log
 /scratch/
-.claude/

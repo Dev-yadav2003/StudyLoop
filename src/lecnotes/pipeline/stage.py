@@ -1,4 +1,4 @@
-"""Stage contract (plan §4.2/§4.4): one stage = one file = one responsibility.
+"""Stage contract: one stage = one file = one responsibility.
 
 A stage is a typed function `In -> Out` (both Pydantic models) plus the metadata that makes
 its output cacheable and measurable. It never calls another stage, never touches the cache,

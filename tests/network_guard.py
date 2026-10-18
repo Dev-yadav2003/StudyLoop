@@ -1,4 +1,4 @@
-"""Block real network access in tests (plan rule §4.9: tests never call real APIs).
+"""Block real network access in tests (rule: tests never call real APIs).
 
 Loopback stays allowed: on Windows the asyncio event loop talks to itself over a
 127.0.0.1 socketpair, so a blanket "no sockets" ban (pytest-socket style) breaks every

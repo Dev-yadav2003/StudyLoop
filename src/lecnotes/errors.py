@@ -1,4 +1,4 @@
-"""Typed errors raised by adapters and the LLM gateway (plan §4.6).
+"""Typed errors raised by adapters and the LLM gateway.
 
 The orchestrator records `type(exc).__name__` as `error_type` in `stage_runs` and shows
 `user_message` to the user. `retryable` tells the job runner whether a later attempt

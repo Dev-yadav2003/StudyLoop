@@ -1,4 +1,4 @@
-"""The only place that calls an LLM (plan §4.3).
+"""The only place that calls an LLM (enforced by tests/unit/test_architecture.py).
 
 Every call goes through `LLMGateway.generate_structured`, which guarantees it is:
   - validated  — output parsed into the requested Pydantic schema, or a typed error;

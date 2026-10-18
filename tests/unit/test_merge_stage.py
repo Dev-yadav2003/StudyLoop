@@ -48,7 +48,7 @@ def unit(
     )
 
 
-# The concept names the first real run produced for this video (devlog, Milestone B).
+# The concept names the first real run produced for this video.
 REAL_RUN = [
     unit("u1", "`zip()` Function", 26, code=ZIP_CODE),
     unit("u2", "`enumerate()` Function", 26, code=ENUM_CODE, examples=["enumerate(names)"]),

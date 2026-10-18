@@ -5,7 +5,7 @@
 
 Writes tests/fixtures/perception_<id>.json (the PerceptionResult) and
 perception_<id>.meta.json (settings, usage, dropped/repaired items) so baselines in the
-devlog are reproducible. Requires GEMINI_API_KEY and LANGFUSE_* in .env.
+results are reproducible. Requires GEMINI_API_KEY and LANGFUSE_* in .env.
 """
 
 import argparse

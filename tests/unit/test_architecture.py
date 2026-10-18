@@ -1,4 +1,4 @@
-"""Import-lint: enforce the dependency direction from plan §4.1 by parsing imports with ast.
+"""Import-lint: enforce the layers' dependency direction by parsing imports with ast.
 
 Add a rule when a new layer gets real code. Rules are checked statically, so a violating
 import fails here even if it sits inside a function body or TYPE_CHECKING block.

@@ -4,7 +4,7 @@
 
 For every golden video with a `perception_<id>.json` fixture: WER, term error rate,
 board recall (overall + by board type), boundary P/R/F1 and drift. Prints a Markdown
-report (paste the summary into docs/devlog.md) and writes it to evals/reports/.
+report and writes it to evals/reports/.
 """
 
 from __future__ import annotations

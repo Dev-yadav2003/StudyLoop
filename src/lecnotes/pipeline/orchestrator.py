@@ -1,6 +1,6 @@
 """Runs stages: cache check → span → run → cache put → metrics. Nothing else.
 
-The pipeline is a fixed linear chain per video (plan §2.1: no LangGraph), so the orchestrator
+The pipeline is a fixed linear chain per video (no branching, so no LangGraph): the orchestrator
 is a loop. `rerun_from` forces a stage and everything after it to recompute, ignoring the
 cache; outputs are re-cached under the same keys.
 """

@@ -1,4 +1,4 @@
-"""Perception via Gemini reading the YouTube URL directly (plan: the ONLY video call).
+"""Perception via Gemini reading the YouTube URL directly (the ONLY call that sees video).
 
 Our server never downloads the video: the URL goes to Gemini as a `media` part, and Gemini
 fetches it. Frame rate is set per part (`video_metadata.fps`); media resolution is set on
