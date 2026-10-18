@@ -7,16 +7,27 @@ import os
 import sys
 import uuid
 from collections.abc import AsyncIterator, Callable, Iterator, Mapping
+from dataclasses import dataclass
 
+import httpx
 import psycopg
 import pytest
 from alembic import command
 from alembic.config import Config
+from pydantic import SecretStr
 from sqlalchemy import make_url, text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
+from apps.api.app import create_app
+from lecnotes.adapters.cache.postgres_cache import PostgresStageCache
+from lecnotes.bootstrap import ApiContainer
+from lecnotes.jobs.queue import JobQueue
+from lecnotes.jobs.runner import JobRunner
 from lecnotes.storage.db import create_engine, session_factory
+from lecnotes.storage.repositories.notes import NotesRepository
+from lecnotes.storage.repositories.stage_runs import PostgresStageRunSink
 from lecnotes.storage.tables import Base
+from tests.pipeline_fakes import fake_services, make_settings
 from tests.postgres_server import ephemeral_postgres, find_pg_bin
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -83,3 +94,28 @@ async def engine(database_url: str) -> AsyncIterator[AsyncEngine]:
 async def session(engine: AsyncEngine) -> AsyncIterator[AsyncSession]:
     async with session_factory(engine)() as s:
         yield s
+
+
+# --- the HTTP API over real Postgres, fakes only at the edges ---------------------------------
+
+ADMIN = {"Authorization": "Bearer s3cret"}
+
+
+@dataclass
+class Api:
+    client: httpx.AsyncClient
+    runner: JobRunner
+
+
+@pytest.fixture
+async def api(engine: AsyncEngine, monkeypatch: pytest.MonkeyPatch) -> AsyncIterator[Api]:
+    settings = make_settings(monkeypatch, admin_token=SecretStr("s3cret"), run_worker=False)
+    services, _ = fake_services(
+        settings, PostgresStageCache(engine), sinks=[PostgresStageRunSink(engine)]
+    )
+    queue, notes = JobQueue(engine), NotesRepository(engine)
+    runner = JobRunner(queue, services.pipeline, notes, owner="test")
+    app = create_app(ApiContainer(settings, engine, queue, notes, services, runner))
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        yield Api(client, runner)

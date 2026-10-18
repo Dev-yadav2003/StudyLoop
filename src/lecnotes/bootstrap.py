@@ -44,6 +44,7 @@ from lecnotes.ports.perception import Perceiver
 from lecnotes.ports.video_catalog import VideoCatalog
 from lecnotes.storage.db import create_engine
 from lecnotes.storage.repositories.feedback import FeedbackRepository
+from lecnotes.storage.repositories.library import LibraryRepository
 from lecnotes.storage.repositories.notes import NotesRepository
 from lecnotes.storage.repositories.stage_runs import PostgresStageRunSink
 
@@ -150,6 +151,10 @@ class ApiContainer:
     @property
     def feedback(self) -> FeedbackRepository:
         return FeedbackRepository(self.engine)
+
+    @property
+    def library(self) -> LibraryRepository:
+        return LibraryRepository(self.engine)
 
 
 @asynccontextmanager

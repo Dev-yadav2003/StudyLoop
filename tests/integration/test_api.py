@@ -1,13 +1,10 @@
 """The HTTP API end to end on real Postgres: submit → run → poll → notes, with fakes only at
 the edges (static catalog, recorded perception, scripted LLM)."""
 
-from collections.abc import AsyncIterator
-from dataclasses import dataclass
 from uuid import UUID, uuid4
 
 import httpx
 import pytest
-from pydantic import SecretStr
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
@@ -18,30 +15,8 @@ from lecnotes.jobs.queue import JobQueue
 from lecnotes.jobs.runner import JobRunner
 from lecnotes.storage.db import code_schema_revision
 from lecnotes.storage.repositories.notes import NotesRepository
-from lecnotes.storage.repositories.stage_runs import PostgresStageRunSink
+from tests.integration.conftest import ADMIN, Api
 from tests.pipeline_fakes import UNIT_ID, URL, VID, fake_services, make_settings
-
-ADMIN = {"Authorization": "Bearer s3cret"}
-
-
-@dataclass
-class Api:
-    client: httpx.AsyncClient
-    runner: JobRunner
-
-
-@pytest.fixture
-async def api(engine: AsyncEngine, monkeypatch: pytest.MonkeyPatch) -> AsyncIterator[Api]:
-    settings = make_settings(monkeypatch, admin_token=SecretStr("s3cret"), run_worker=False)
-    services, _ = fake_services(
-        settings, PostgresStageCache(engine), sinks=[PostgresStageRunSink(engine)]
-    )
-    queue, notes = JobQueue(engine), NotesRepository(engine)
-    runner = JobRunner(queue, services.pipeline, notes, owner="test")
-    app = create_app(ApiContainer(settings, engine, queue, notes, services, runner))
-    transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-        yield Api(client, runner)
 
 
 async def test_submit_poll_and_read_notes(api: Api) -> None:

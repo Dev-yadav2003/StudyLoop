@@ -5,10 +5,10 @@ and the TypeScript client generated from /openapi.json — doesn't change by acc
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StringConstraints
 
 from lecnotes.domain import (
     JobStatus,
@@ -146,3 +146,42 @@ class FeedbackListOut(BaseModel):
     up: int
     down: int
     items: list[FeedbackItemOut]
+
+
+Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=80)]
+Title = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
+
+
+class ChapterCreate(BaseModel):
+    name: Name = Field(examples=["Python"])
+
+
+class LessonOut(BaseModel):
+    id: UUID
+    chapter_id: UUID
+    title: str = Field(description="The custom title, else the video title, else the link")
+    custom_title: str | None
+    url: str
+    video_id: str | None
+    job_id: UUID
+    status: JobStatus
+    notes_id: UUID | None
+    created_at: datetime
+
+
+class ChapterOut(BaseModel):
+    id: UUID
+    name: str
+    created_at: datetime
+    lessons: list[LessonOut]
+
+
+class LessonCreate(BaseModel):
+    url: str = Field(min_length=1, examples=["https://www.youtube.com/watch?v=Ek49cGiAOwo"])
+    subject_preset: SubjectPreset = SubjectPreset.GENERAL
+    title: Title | None = None
+
+
+class LessonUpdate(BaseModel):
+    title: Title | None = Field(default=None, description="null resets to the video title")
+    chapter_id: UUID | None = Field(default=None, description="move to another chapter")

@@ -207,3 +207,33 @@ class FeedbackRow(Base):
     created_at: Mapped[datetime] = _created()
 
     __table_args__ = (CheckConstraint("rating IN (-1, 1)", name="rating"),)
+
+
+class ChapterRow(Base):
+    """A user's folder of lessons, e.g. "Python" or "LLM evaluation"."""
+
+    __tablename__ = "chapters"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    name: Mapped[str]
+    position: Mapped[int] = mapped_column(server_default="0")
+    created_at: Mapped[datetime] = _created()
+    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
+
+
+class LessonRow(Base):
+    """One lecture inside a chapter: points at the job that makes its notes. Jobs are shared
+    (same video + options → same job), so deleting a lesson never deletes notes."""
+
+    __tablename__ = "lessons"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    chapter_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("chapters.id", ondelete="CASCADE"), index=True
+    )
+    job_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("jobs.id"))
+    title: Mapped[str | None]
+    """User's name for the lesson; None = the video's title."""
+    position: Mapped[int] = mapped_column(server_default="0")
+    created_at: Mapped[datetime] = _created()
+    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())

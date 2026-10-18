@@ -56,15 +56,21 @@ async def job_out(c: ApiContainer, job: Job) -> JobOut:
     )
 
 
+def video_id_from_link(url: str) -> str:
+    """The video id of a single-video YouTube link; a playlist or other link is a 422."""
+    video_id = parse_video_id(url)
+    if video_id is None:
+        if is_playlist_link(url):
+            raise PlaylistNotSupported(f"playlist link: {url!r}")
+        raise InvalidLink(f"not a video link: {url!r}")
+    return video_id
+
+
 @router.post("", response_model=JobOut, status_code=202, responses=ERRORS)
 async def create_job(body: JobCreate, c: Container, response: Response) -> JobOut:
     """Queue notes for one video. Idempotent: the same video + options returns the existing
     job (200) instead of creating a new one (202)."""
-    video_id = parse_video_id(body.url)
-    if video_id is None:
-        if is_playlist_link(body.url):
-            raise PlaylistNotSupported(f"playlist link: {body.url!r}")
-        raise InvalidLink(f"not a video link: {body.url!r}")
+    video_id = video_id_from_link(body.url)
     job, created = await c.queue.enqueue(
         body.url, video_id, JobOptions(subject_preset=body.subject_preset)
     )

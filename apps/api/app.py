@@ -13,7 +13,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from apps.api import middleware
-from apps.api.routers import admin, health, jobs, notes
+from apps.api.routers import admin, health, jobs, library, notes
 from lecnotes import __version__
 from lecnotes.bootstrap import ApiContainer, api_container
 from lecnotes.config import Settings, get_settings
@@ -49,13 +49,13 @@ def create_app(
     app.add_middleware(
         CORSMiddleware,
         allow_origins=cors,
-        allow_methods=["GET", "POST"],
+        allow_methods=["GET", "POST", "PATCH", "DELETE"],
         allow_headers=["Content-Type", "Authorization", middleware.REQUEST_ID],
         expose_headers=[middleware.REQUEST_ID, "Location"],
     )
     if container is not None:
         app.state.container = container
     middleware.install(app)
-    for router in (health.router, jobs.router, notes.router, admin.router):
+    for router in (health.router, jobs.router, library.router, notes.router, admin.router):
         app.include_router(router)
     return app
