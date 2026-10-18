@@ -1,24 +1,25 @@
 # Testing everything on your laptop
 
 Everything runs locally against your real services (Supabase, Gemini, YouTube Data API,
-Langfuse). Deploying to Render/Vercel comes later.
+Langfuse).
 
 ## 0. One-time setup
 
 ```bash
 uv sync                          # Python deps
-uv run alembic upgrade head      # Supabase schema → latest (0008)
+cp .env.example .env              # fill in the REQUIRED section (see comments in the file)
+uv run alembic upgrade head      # create/upgrade the schema
 cd apps/web && npm install       # frontend deps (Node ≥ 20.9)
-cp .env.example .env.local       # NEXT_PUBLIC_API_URL=http://127.0.0.1:8000
+cp .env.example .env.local       # API URL + Supabase URL + publishable key
 ```
 
-`.env` (repo root) must have `GEMINI_API_KEY`, `YOUTUBE_API_KEY`, `DATABASE_URL` (Supabase
-**session pooler**), `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`. Optional: `ADMIN_TOKEN`.
+Supabase → **Authentication → URL Configuration**: Site URL `http://localhost:3000`, and
+`http://localhost:3000/**` under Redirect URLs — the sign-in email links back there.
 
 ## 1. Automated checks (≈ 30 s, no network)
 
 ```bash
-uv run ruff check . && uv run pyright && uv run pytest     # 425 tests incl. real Postgres
+uv run ruff check . && uv run pyright && uv run pytest     # 455 tests incl. real Postgres
 cd apps/web && npm run typecheck && npm run build
 ```
 
@@ -37,6 +38,9 @@ Check the API first:
 
 ## 3. Happy path in the browser
 
+0. **Sign in:** enter your email → open the link in the email (same browser). With your
+   email in `OWNER_EMAILS` the sidebar shows *Owner · unlimited*; any other email is a guest
+   with 60 minutes of video in total (shown as a bar in the sidebar).
 1. **Chapters** (left sidebar): **+** next to *Chapters* → type a name (e.g. `Python`),
    Enter. Hover a chapter → **+** (add a lesson to it), ✏️ (rename), 🗑 (delete it and its
    lessons — the notes themselves are kept).
