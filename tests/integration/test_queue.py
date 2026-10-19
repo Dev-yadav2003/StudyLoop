@@ -191,3 +191,24 @@ async def test_jobs_stored_with_since_removed_options_still_load(engine: AsyncEn
     loaded = await queue.get(job.id)
     assert loaded is not None
     assert loaded.options == JobOptions(subject_preset=SubjectPreset.STEM)
+
+
+async def test_waiting_for_quota_does_not_use_up_attempts(engine: AsyncEngine) -> None:
+    """A long lecture may wait for several daily resets; that must not fail the job."""
+    q = JobQueue(engine, max_attempts=1)
+    await q.enqueue(VID, VID, JobOptions())
+    for _ in range(3):
+        async with engine.begin() as conn:  # make it due again
+            await conn.execute(update(JobRow).values(run_after=text("now()")))
+        lease = await q.lease("w1")
+        assert lease is not None
+        job = await q.fail(
+            lease,
+            error_type="QuotaExceeded",
+            user_message="quota",
+            retryable=True,
+            retry_in_s=3600,
+            count_attempt=False,
+        )
+        assert job.status is JobStatus.QUEUED
+        assert job.attempts == 0

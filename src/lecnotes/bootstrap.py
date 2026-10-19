@@ -45,6 +45,7 @@ from lecnotes.ports.perception import Perceiver
 from lecnotes.ports.video_catalog import VideoCatalog
 from lecnotes.storage.db import create_engine
 from lecnotes.storage.repositories.feedback import FeedbackRepository
+from lecnotes.storage.repositories.key_usage import KeyUsageRepository
 from lecnotes.storage.repositories.library import LibraryRepository
 from lecnotes.storage.repositories.notes import NotesRepository
 from lecnotes.storage.repositories.stage_runs import PostgresStageRunSink
@@ -129,6 +130,8 @@ async def production_services(
             )
             return
         async with _engine(settings, engine) as db:
+            # Count Gemini requests per key in Postgres: shared by workers, kept on restart.
+            gateway.use_usage_store(KeyUsageRepository(db))
             yield assemble(
                 settings=settings,
                 catalog=catalog,

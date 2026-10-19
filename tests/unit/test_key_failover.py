@@ -70,10 +70,10 @@ async def test_benched_key_is_skipped_on_later_calls_until_the_bench_ends() -> N
     fake = FakeLLM({"qa": [PER_MINUTE, OK, OK, OK]})
     gw = gateway(fake, clock=clock)
     await gw.generate_structured(prompt(), Answer)  # key 0 → per-minute 429 → key 1
-    await gw.generate_structured(prompt(), Answer)  # starts at key 1
+    await gw.generate_structured(prompt(), Answer)  # least used of keys 1-2: key 2
     clock.now += PER_MINUTE_BENCH_S + 1
-    await gw.generate_structured(prompt(), Answer)  # key 0 is back
-    assert [c.key for c in fake.calls] == [0, 1, 1, 0]
+    await gw.generate_structured(prompt(), Answer)  # key 0 is back (its 429 didn't count)
+    assert [c.key for c in fake.calls] == [0, 1, 2, 0]
 
 
 async def test_invalid_key_is_benched_for_every_model() -> None:

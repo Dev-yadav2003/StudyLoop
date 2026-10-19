@@ -23,7 +23,7 @@ from lecnotes.domain.notes import NotesDocument
 from lecnotes.domain.perception import PerceptionResult, PerceptionRun
 from lecnotes.domain.qa import QaLevel, QaRequest, Question, QuestionLevel, QuestionSet
 from lecnotes.domain.transcript import TranscriptSegment, TranscriptSource
-from lecnotes.domain.usage import LLMUsage
+from lecnotes.domain.usage import KeyUsage, LLMUsage
 from lecnotes.domain.video import VideoMeta, VideoRef
 from lecnotes.domain.visual import UNCLEAR_MARKER, BoardState, BoardType
 
@@ -43,6 +43,7 @@ __all__ = [
     "Job",
     "JobOptions",
     "JobStatus",
+    "KeyUsage",
     "KnowledgeUnit",
     "LLMUsage",
     "NotesDocument",

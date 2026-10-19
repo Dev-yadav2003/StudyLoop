@@ -101,12 +101,20 @@ class JobRunner:
         except LecNotesError as exc:
             cause = exc.cause if isinstance(exc, StageFailed) else exc
             quota = isinstance(cause, QuotaExceeded | CatalogQuotaExceeded)
+            retry_in_s = self.transient_retry_s
+            if quota:
+                # The gateway knows when the budget comes back (e.g. the daily reset).
+                after = cause.retry_after_s if isinstance(cause, QuotaExceeded) else None
+                retry_in_s = after if after is not None else self.quota_retry_s
             updated = await self._queue.fail(
                 lease,
                 error_type=type(cause).__name__,
                 user_message=exc.user_message,
                 retryable=exc.retryable,
-                retry_in_s=self.quota_retry_s if quota else self.transient_retry_s,
+                retry_in_s=retry_in_s,
+                # Waiting for quota is not a failed try: a long lecture may wait for several
+                # resets and must not run out of attempts doing so.
+                count_attempt=not quota,
             )
             log.warning("job.error", error_type=type(cause).__name__, status=updated.status)
         except Exception as exc:
