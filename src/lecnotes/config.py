@@ -11,6 +11,7 @@ Usage:
 
 from __future__ import annotations
 
+import json
 from functools import lru_cache
 from typing import Annotated, Literal
 
@@ -101,7 +102,10 @@ class Settings(BaseSettings):
     admin_token: SecretStr | None = Field(
         default=None, description="Bearer token for /v1/admin/*; unset = admin API disabled"
     )
-    cors_origins: list[str] = ["http://localhost:3000"]
+    cors_origins: Annotated[list[str], NoDecode] = Field(
+        default=["http://localhost:3000"],
+        description='Web origins: CORS_ORIGINS=https://a.app,https://b.app or ["https://a.app"]',
+    )
 
     # --- sign-in + limits (Supabase Auth; tokens verified with the project's public keys) ---
     supabase_url: str | None = Field(
@@ -183,6 +187,16 @@ class Settings(BaseSettings):
     def _secret_not_blank(cls, value: SecretStr | None) -> SecretStr | None:
         if value is not None and not value.get_secret_value().strip():
             raise ValueError("must not be empty")
+        return value
+
+    @field_validator("cors_origins", mode="before")
+    @classmethod
+    def _origins(cls, value: object) -> object:
+        # A browser's Origin never ends in "/", so "https://x.app/" would silently never match.
+        if isinstance(value, str):
+            value = json.loads(value) if value.strip().startswith("[") else value.split(",")
+        if isinstance(value, list):
+            return [str(v).strip().rstrip("/") for v in value if str(v).strip()]
         return value
 
     @field_validator("owner_emails", mode="before")
