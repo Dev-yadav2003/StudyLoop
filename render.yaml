@@ -19,7 +19,7 @@ services:
       # JSON list of web origins, e.g. ["https://studyloop.vercel.app"]
       - key: CORS_ORIGINS
         sync: false
-      - key: GEMINI_API_KEY
+      - key: GEMINI_API_KEYS
         sync: false
       - key: YOUTUBE_API_KEY
         sync: false
