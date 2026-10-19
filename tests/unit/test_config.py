@@ -63,6 +63,20 @@ def test_env_overrides_and_nested_flags(monkeypatch: pytest.MonkeyPatch) -> None
 
 
 @pytest.mark.usefixtures("required_env")
+@pytest.mark.parametrize(
+    "raw",
+    [
+        '["https://a.vercel.app", "http://localhost:3000"]',
+        "https://a.vercel.app, http://localhost:3000",
+        "https://a.vercel.app/,http://localhost:3000/",
+    ],
+)
+def test_cors_origins_json_or_comma_separated(monkeypatch: pytest.MonkeyPatch, raw: str) -> None:
+    monkeypatch.setenv("CORS_ORIGINS", raw)
+    assert load_settings().cors_origins == ["https://a.vercel.app", "http://localhost:3000"]
+
+
+@pytest.mark.usefixtures("required_env")
 def test_chunk_bounds_validated(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("CHUNK_MIN_S", "300")
     monkeypatch.setenv("CHUNK_MAX_S", "100")
