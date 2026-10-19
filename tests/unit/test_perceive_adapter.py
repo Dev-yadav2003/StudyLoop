@@ -41,6 +41,27 @@ def test_satisfies_port() -> None:
     assert p.fingerprint["prompt_version"] == 2
     assert p.fingerprint["fps"] == 0.5
     assert p.fingerprint["window_s"] == 1200
+    assert p.fingerprint["thinking_budget"] == -1  # not capped
+
+
+async def test_from_settings_caps_thinking(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setitem(Settings.model_config, "env_file", None)
+    secret = SecretStr("k")
+    settings = Settings(
+        gemini_api_key=secret,
+        youtube_api_key=secret,
+        database_url=secret,
+        langfuse_public_key=secret,
+        langfuse_secret_key=secret,
+    )
+    fake = FakeLLM({"perceive": sample()})
+    gateway = LLMGateway(fake.factory, default_model=FLASH, retry_backoff=False)
+    p = GeminiUrlPerceiver.from_settings(settings, gateway)
+    assert p.fingerprint["thinking_budget"] == 4096
+
+    await p.perceive(VIDEO, duration_s=300)
+    [call] = fake.calls
+    assert call.options.thinking_budget == 4096
 
 
 async def test_perceive_returns_run_with_usage_and_report() -> None:

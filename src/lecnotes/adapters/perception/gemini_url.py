@@ -51,6 +51,8 @@ MAX_OUTPUT_TOKENS = 65_536
 # Consecutive clips share this much video, so a sentence or slide cut at a boundary is
 # still seen whole by one of them.
 CLIP_OVERLAP_S = 10.0
+# Thinking tokens count against MAX_OUTPUT_TOKENS too: from_settings caps them
+# (PERCEIVE_THINKING_BUDGET), or a stuck model can think until the answer is cut off.
 # A truncated clip is halved until it is this short; then the video is too dense to read.
 MIN_CLIP_S = 120.0
 # Items timed this far outside their clip are model mistakes and are dropped.
@@ -116,6 +118,7 @@ class GeminiUrlPerceiver:
         self._media_resolution: MediaResolution = media_resolution
         self._prompt_version = prompt_version
         self._window_s = window_s
+        self._thinking_budget = thinking_budget
         self._options = ModelOptions(
             media_resolution=media_resolution,
             max_output_tokens=MAX_OUTPUT_TOKENS,
@@ -132,6 +135,7 @@ class GeminiUrlPerceiver:
             media_resolution=settings.perceive_media_resolution,
             prompt_version=settings.perceive_prompt_version,
             timeout_s=settings.perceive_timeout_s,
+            thinking_budget=settings.perceive_thinking_budget,
             window_s=settings.perceive_window_s,
         )
 
@@ -146,6 +150,7 @@ class GeminiUrlPerceiver:
             "media_resolution": self._media_resolution,
             "max_output_tokens": MAX_OUTPUT_TOKENS,
             "window_s": self._window_s,
+            "thinking_budget": -1 if self._thinking_budget is None else self._thinking_budget,
         }
 
     async def perceive(self, video: VideoRef, *, duration_s: float | None = None) -> PerceptionRun:
