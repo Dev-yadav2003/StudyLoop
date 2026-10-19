@@ -12,6 +12,11 @@ video longer than `window_s` is cut into equal clips (`video_metadata.start_offs
 `end_offset`) that overlap by CLIP_OVERLAP_S, perceived one after another, and stitched on
 the full video's timeline. A clip that still truncates is halved, down to MIN_CLIP_S. The
 overlap's duplicates are removed by the validate stage, like any repeated speech or slide.
+
+Truncation is usually not real content but a loop: thinking that never ends (capped by the
+thinking budget) or an answer repeating itself at temperature 0 ("Tool Tool Tool ..."). Each
+clip's output cap is sized to its length so a loop fails fast, and a minimum-length clip that
+loops gets one retry at RETRY_TEMPERATURE.
 """
 
 from __future__ import annotations
@@ -55,6 +60,14 @@ CLIP_OVERLAP_S = 10.0
 # (PERCEIVE_THINKING_BUDGET), or a stuck model can think until the answer is cut off.
 # A truncated clip is halved until it is this short; then the video is too dense to read.
 MIN_CLIP_S = 120.0
+# Per-clip answer cap. The densest working clip measured ~2.4k answer tokens per minute of
+# video; a repetition loop ("Tool Tool Tool ...") runs to the cap, so a tight cap makes a
+# looping call fail in seconds instead of ~4.5 minutes.
+ANSWER_TOKENS_PER_MIN = 4_000
+MIN_ANSWER_TOKENS = 8_192
+# Temperature 0 repeats a loop exactly, so a clip that loops even at MIN_CLIP_S is tried once
+# more with some randomness before the video is declared too dense.
+RETRY_TEMPERATURE = 0.5
 # Items timed this far outside their clip are model mistakes and are dropped.
 CLIP_TOLERANCE_S = 30.0
 # First prompt version that declares clip_start / clip_end (v1 renders without them).
@@ -151,6 +164,8 @@ class GeminiUrlPerceiver:
             "max_output_tokens": MAX_OUTPUT_TOKENS,
             "window_s": self._window_s,
             "thinking_budget": -1 if self._thinking_budget is None else self._thinking_budget,
+            "answer_tokens_per_min": ANSWER_TOKENS_PER_MIN,
+            "retry_temperature": RETRY_TEMPERATURE,
         }
 
     async def perceive(self, video: VideoRef, *, duration_s: float | None = None) -> PerceptionRun:
@@ -179,8 +194,19 @@ class GeminiUrlPerceiver:
             log.warning("perceive.item_dropped", video_id=video.video_id, reason=reason)
         return run
 
+    def _clip_options(self, clip: Clip | None, temperature: float | None) -> ModelOptions:
+        cap = MAX_OUTPUT_TOKENS
+        if clip is not None:
+            answer = max(MIN_ANSWER_TOKENS, ANSWER_TOKENS_PER_MIN * (clip.end - clip.start) / 60)
+            cap = min(MAX_OUTPUT_TOKENS, int(answer) + (self._thinking_budget or 0))
+        return replace(self._options, max_output_tokens=cap, temperature=temperature)
+
     async def _perceive_clip(
-        self, video: VideoRef, clip: Clip | None, duration_s: float | None
+        self,
+        video: VideoRef,
+        clip: Clip | None,
+        duration_s: float | None,
+        temperature: float | None = None,
     ) -> list[_Part]:
         prompt = with_video(self._prompt(clip, duration_s), video.url, self._fps, clip)
         try:
@@ -188,7 +214,7 @@ class GeminiUrlPerceiver:
                 prompt,
                 PerceiveOutput,
                 model=self._model,
-                options=self._options,
+                options=self._clip_options(clip, temperature),
                 metadata={
                     "video_id": video.video_id,
                     "fps": self._fps,
@@ -198,7 +224,11 @@ class GeminiUrlPerceiver:
         except QuotaExceeded:
             raise  # the job runner waits for the quota to reset
         except OutputTruncated as exc:
-            if clip is None or clip.end - clip.start < 2 * MIN_CLIP_S:
+            short = clip is not None and clip.end - clip.start < 2 * MIN_CLIP_S
+            if clip is not None and short and temperature is None:
+                log.warning("perceive.clip_loop_retry", video_id=video.video_id, clip=clip.label)
+                return await self._perceive_clip(video, clip, duration_s, RETRY_TEMPERATURE)
+            if clip is None or short:
                 raise VideoTooDense(
                     f"{video.video_id}: perception output truncated at {MAX_OUTPUT_TOKENS} "
                     f"tokens for clip {clip.label if clip else 'all'}"

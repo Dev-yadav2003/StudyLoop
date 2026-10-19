@@ -8,6 +8,8 @@ from langchain_core.messages import AIMessage, HumanMessage
 from lecnotes.adapters.llm.fake import FakeCall, FakeLLM
 from lecnotes.adapters.perception.gemini_url import (
     CLIP_OVERLAP_S,
+    MAX_OUTPUT_TOKENS,
+    RETRY_TEMPERATURE,
     Clip,
     GeminiUrlPerceiver,
     halve,
@@ -154,12 +156,30 @@ async def test_truncated_clip_is_halved() -> None:
     assert [s.text for s in run.result.segments] == ["first half", "second half"]
 
 
-async def test_too_dense_when_the_shortest_clip_truncates() -> None:
+async def test_looping_short_clip_is_retried_with_some_randomness() -> None:
+    fake = FakeLLM({"perceive": [TRUNCATED, output(("00:10", "00:20", "unstuck"))]})
+    run = await perceiver(fake).perceive(VIDEO, duration_s=200)  # < 2 x MIN_CLIP_S: no split
+
+    assert [c.options.temperature for c in fake.calls] == [None, RETRY_TEMPERATURE]
+    assert [s.text for s in run.result.segments] == ["unstuck"]
+
+
+async def test_too_dense_when_the_shortest_clip_truncates_twice() -> None:
     fake = FakeLLM({"perceive": TRUNCATED})
     with pytest.raises(VideoTooDense) as exc_info:
-        await perceiver(fake).perceive(VIDEO, duration_s=200)  # < 2 x MIN_CLIP_S: no split
-    assert len(fake.calls) == 1
+        await perceiver(fake).perceive(VIDEO, duration_s=200)
+    assert len(fake.calls) == 2  # once as usual, once at RETRY_TEMPERATURE
     assert "too much speech and on-screen text" in exc_info.value.user_message
+
+
+async def test_output_cap_scales_with_clip_length() -> None:
+    fake = FakeLLM({"perceive": output(("00:10", "00:20", "x"))})
+    await perceiver(fake, thinking_budget=4096).perceive(VIDEO, duration_s=1500)
+
+    # Three clips of 510, 510 and 500 s: 4,000 answer tokens per minute + the thinking budget.
+    caps = [c.options.max_output_tokens for c in fake.calls]
+    assert caps == [34_000 + 4096, 34_000 + 4096, 33_333 + 4096]
+    assert all(cap is not None and cap < MAX_OUTPUT_TOKENS for cap in caps)
 
 
 async def test_prompt_v1_still_works_with_clips() -> None:
