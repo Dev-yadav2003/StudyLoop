@@ -198,7 +198,7 @@ starlette==1.8.0
     # via fastapi
 structlog==26.1.0
     # via lecnotes
-tenacity==9.1.4
+tenacity==9.2.1
     # via
     #   google-genai
     #   langchain-core
