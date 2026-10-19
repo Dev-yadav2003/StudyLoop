@@ -83,8 +83,11 @@ class Settings(BaseSettings):
     # --- perception ---
     perceive_fps: float = Field(default=1.0, gt=0, le=24)
     perceive_media_resolution: MediaResolution = "low"
-    perceive_prompt_version: int = Field(default=1, ge=1)
+    perceive_prompt_version: int = Field(default=2, ge=1)
     perceive_timeout_s: float = Field(default=600, gt=0, description="Video calls are slow")
+    perceive_window_s: float = Field(
+        default=600, ge=120, description="Longer videos are perceived in clips of at most this"
+    )
 
     # --- extraction ---
     extract_prompt_version: int = Field(default=4, ge=1)

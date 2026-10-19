@@ -57,6 +57,15 @@ class PerceptionError(LecNotesError):
         self.retryable = retryable
 
 
+class VideoTooDense(PerceptionError):
+    """Even the shortest clip of the video produced more output than the model can return."""
+
+    user_message = (
+        "This lecture has too much speech and on-screen text to read, even in short parts. "
+        "Try a shorter video."
+    )
+
+
 class InvalidLink(LecNotesError):
     user_message = "That doesn't look like a link to a YouTube video."
 

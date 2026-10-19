@@ -14,7 +14,7 @@ from lecnotes.adapters.perception.gemini_url import MAX_OUTPUT_TOKENS, GeminiUrl
 from lecnotes.adapters.perception.schema import PerceiveOutput
 from lecnotes.config import Settings
 from lecnotes.domain import VideoRef
-from lecnotes.errors import PerceptionError, QuotaExceeded
+from lecnotes.errors import PerceptionError, QuotaExceeded, VideoTooDense
 from lecnotes.llm.gateway import LLMGateway, ModelOptions, gemini_factory
 from lecnotes.ports.perception import Perceiver
 
@@ -28,7 +28,9 @@ def sample() -> PerceiveOutput:
 
 
 def perceiver(fake: FakeLLM, **kwargs: Any) -> GeminiUrlPerceiver:
+    """One call for videos up to 20 min (clipping has its own tests: test_perceive_clips)."""
     gateway = LLMGateway(fake.factory, default_model=FLASH, retry_backoff=False)
+    kwargs.setdefault("window_s", 1200)
     return GeminiUrlPerceiver(
         gateway, model=FLASH, fps=0.5, media_resolution="low", timeout_s=600, **kwargs
     )
@@ -36,8 +38,9 @@ def perceiver(fake: FakeLLM, **kwargs: Any) -> GeminiUrlPerceiver:
 
 def test_satisfies_port() -> None:
     p: Perceiver = perceiver(FakeLLM({}))
-    assert p.fingerprint["prompt_version"] == 1
+    assert p.fingerprint["prompt_version"] == 2
     assert p.fingerprint["fps"] == 0.5
+    assert p.fingerprint["window_s"] == 1200
 
 
 async def test_perceive_returns_run_with_usage_and_report() -> None:
@@ -51,7 +54,7 @@ async def test_perceive_returns_run_with_usage_and_report() -> None:
     assert len(run.dropped) == 4
     assert len(run.repaired) == 1
     [usage] = run.usage
-    assert (usage.prompt_id, usage.prompt_version, usage.model) == ("perceive", 1, FLASH)
+    assert (usage.prompt_id, usage.prompt_version, usage.model) == ("perceive", 2, FLASH)
     assert usage.tokens_in == 50_000
 
 
@@ -74,13 +77,14 @@ async def test_video_part_options_and_duration_sent_to_model() -> None:
     }
     assert isinstance(text_part, dict)
     assert "(duration 12:34)" in text_part["text"]
+    assert "part from" not in text_part["text"]  # the whole video: no clip instructions
 
 
 async def test_truncation_becomes_perception_error() -> None:
     cut = AIMessage(content='{"board_states": [', response_metadata={"finish_reason": "MAX_TOKENS"})
     fake = FakeLLM({"perceive": cut})
-    with pytest.raises(PerceptionError, match="truncated"):
-        await perceiver(fake).perceive(VIDEO)
+    with pytest.raises(VideoTooDense, match="truncated"):
+        await perceiver(fake).perceive(VIDEO)  # duration unknown: nothing to split
     assert len(fake.calls) == 1
 
 
@@ -148,7 +152,9 @@ async def test_wire_request_carries_video_url_fps_and_resolution(
     route = respx.post(url__regex=r".*/models/gemini-2\.5-flash:generateContent.*").mock(
         return_value=httpx.Response(200, json=gemini_response(FIXTURE.read_text("utf-8")))
     )
-    p = GeminiUrlPerceiver(real_gateway, model=FLASH, fps=0.5, media_resolution="low")
+    p = GeminiUrlPerceiver(
+        real_gateway, model=FLASH, fps=0.5, media_resolution="low", window_s=1200
+    )
 
     run = await p.perceive(VIDEO, duration_s=754)
 
@@ -184,3 +190,27 @@ async def test_wire_max_tokens_is_not_retried(real_gateway: LLMGateway) -> None:
     with pytest.raises(PerceptionError, match="truncated"):
         await p.perceive(VIDEO)
     assert route.call_count == 1  # no retries, no fallback: each attempt costs video quota
+
+
+@respx.mock
+async def test_wire_clip_offsets_reach_the_request(real_gateway: LLMGateway) -> None:
+    route = respx.post(url__regex=r".*:generateContent.*").mock(
+        return_value=httpx.Response(200, json=gemini_response(FIXTURE.read_text("utf-8")))
+    )
+    p = GeminiUrlPerceiver(real_gateway, model=FLASH, fps=1, media_resolution="low")
+
+    await p.perceive(VIDEO, duration_s=1500)  # 25 min -> three clips of ~8:20
+
+    assert route.call_count == 3
+    offsets = []
+    for call in route.calls:
+        parts = json.loads(call.request.content)["contents"][-1]["parts"]
+        meta = next(part for part in parts if "fileData" in part)["videoMetadata"]
+        # Proto field names, like `file_uri` above; proto3 JSON accepts both spellings.
+        offsets.append(
+            (
+                meta.get("startOffset", meta.get("start_offset")),
+                meta.get("endOffset", meta.get("end_offset")),
+            )
+        )
+    assert offsets == [("0s", "510s"), ("500s", "1010s"), ("1000s", "1500s")]
