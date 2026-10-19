@@ -85,6 +85,11 @@ class Settings(BaseSettings):
     perceive_media_resolution: MediaResolution = "low"
     perceive_prompt_version: int = Field(default=2, ge=1)
     perceive_timeout_s: float = Field(default=600, gt=0, description="Video calls are slow")
+    # Measured: working perceive calls think ~2.5k tokens; a stuck one thought 62.9k of the
+    # 65.5k output cap (thinking counts against it) and was cut off after 5 minutes.
+    perceive_thinking_budget: int = Field(
+        default=4096, ge=0, description="Cap on Gemini's thinking tokens per perceive call"
+    )
     perceive_window_s: float = Field(
         default=600, ge=120, description="Longer videos are perceived in clips of at most this"
     )
