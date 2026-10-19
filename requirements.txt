@@ -33,23 +33,36 @@ cryptography==50.0.2
     #   google-auth
     #   pyjwt
 distro==1.9.0
-    # via
-    #   google-genai
-    #   langsmith
+    # via langsmith
 fastapi==0.143.3
     # via lecnotes
 filetype==1.2.0
     # via langchain-google-genai
+google-ai-generativelanguage==0.12.1
+    # via langchain-google-genai
+google-api-core==2.42.0
+    # via google-ai-generativelanguage
 google-auth==2.62.0
-    # via google-genai
-google-genai==2.31.0
     # via
-    #   langchain-google-genai
-    #   lecnotes
+    #   google-ai-generativelanguage
+    #   google-api-core
+    #   google-genai
+google-genai==1.20.0
+    # via lecnotes
 googleapis-common-protos==1.75.5
-    # via opentelemetry-exporter-otlp-proto-http
+    # via
+    #   google-api-core
+    #   grpcio-status
+    #   opentelemetry-exporter-otlp-proto-http
 greenlet==3.5.6
     # via sqlalchemy
+grpcio==1.84.0
+    # via
+    #   google-ai-generativelanguage
+    #   google-api-core
+    #   grpcio-status
+grpcio-status==1.84.0
+    # via google-api-core
 h11==0.16.0
     # via
     #   httpcore
@@ -87,7 +100,7 @@ langchain-core==1.6.12
     # via
     #   langchain-google-genai
     #   lecnotes
-langchain-google-genai==4.4.2
+langchain-google-genai==3.2.0
     # via lecnotes
 langchain-protocol==0.0.19
     # via langchain-core
@@ -104,6 +117,7 @@ markupsafe==3.0.4
 opentelemetry-api==1.45.1
     # via
     #   fastapi
+    #   google-api-core
     #   langfuse
     #   opentelemetry-exporter-http-transport
     #   opentelemetry-exporter-otlp-proto-http
@@ -135,10 +149,18 @@ packaging==26.3
     #   langchain-core
     #   langfuse
     #   langsmith
+proto-plus==1.29.0
+    # via
+    #   google-ai-generativelanguage
+    #   google-api-core
 protobuf==7.36.2
     # via
+    #   google-ai-generativelanguage
+    #   google-api-core
     #   googleapis-common-protos
+    #   grpcio-status
     #   opentelemetry-proto
+    #   proto-plus
 psycopg==3.3.6
     # via lecnotes
 psycopg-binary==3.3.6 ; implementation_name != 'pypy'
@@ -178,7 +200,7 @@ rapidfuzz==3.14.6
     # via lecnotes
 requests==2.34.2
     # via
-    #   google-auth
+    #   google-api-core
     #   google-genai
     #   langsmith
     #   opentelemetry-exporter-http-transport
@@ -187,9 +209,7 @@ requests==2.34.2
 requests-toolbelt==1.0.0
     # via langsmith
 sniffio==1.3.1
-    # via
-    #   google-genai
-    #   langsmith
+    # via langsmith
 sqlalchemy==2.1.5
     # via
     #   alembic
@@ -200,7 +220,6 @@ structlog==26.1.0
     # via lecnotes
 tenacity==9.2.1
     # via
-    #   google-genai
     #   langchain-core
     #   lecnotes
 truststore==0.10.5 ; sys_platform != 'emscripten'
@@ -213,6 +232,7 @@ typing-extensions==4.16.0
     #   anyio
     #   fastapi
     #   google-genai
+    #   grpcio
     #   httpx2
     #   langchain-core
     #   langchain-protocol
@@ -248,7 +268,7 @@ uvloop==0.23.0 ; platform_python_implementation != 'PyPy' and sys_platform != 'c
     # via uvicorn
 watchfiles==1.3.0
     # via uvicorn
-websockets==16.1.1
+websockets==15.0.1
     # via
     #   google-genai
     #   langsmith
