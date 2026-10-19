@@ -15,9 +15,11 @@ and exercise the exact same retry / fallback / tracing path offline.
 
 from __future__ import annotations
 
+import asyncio
 import time
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
+from datetime import UTC, date, datetime
 from functools import partial
 from typing import Any, Literal, NoReturn, cast
 
@@ -44,11 +46,20 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from pydantic import BaseModel, SecretStr
 
 from lecnotes.config import Settings
-from lecnotes.domain import LLMUsage
+from lecnotes.domain import KeyUsage, LLMUsage
 from lecnotes.errors import LLMError, OutputTruncated, QuotaExceeded, StructuredOutputError
-from lecnotes.llm.keys import KeyPool, key_problem
+from lecnotes.llm.keys import KeyPool, ModelBreaker, is_overloaded, key_problem
 from lecnotes.llm.models import get_model
 from lecnotes.llm.pricing import cost_usd
+from lecnotes.llm.quota import (
+    RESET_MARGIN_S,
+    MemoryUsageStore,
+    UsageStore,
+    daily_limit_from,
+    key_id,
+    quota_day,
+    seconds_until_reset,
+)
 from lecnotes.llm.rate_limit import rate_limiter, requests_per_minute
 from lecnotes.observability.logging import get_logger
 from lecnotes.observability.tracing import langchain_callbacks
@@ -80,6 +91,12 @@ _MEDIA_RESOLUTION = {
     "medium": MediaResolution.MEDIA_RESOLUTION_MEDIUM,
     "high": MediaResolution.MEDIA_RESOLUTION_HIGH,
 }
+
+# A 503 / 5xx gets one more try on the same key, then the next model (see _invoke).
+SERVER_ERROR_TRIES = 2
+SERVER_ERROR_PAUSE_S = 3.0
+# All keys out of per-minute budget: try again after this.
+PER_MINUTE_RETRY_S = 120.0
 
 # Errors where another attempt (same model after backoff, or the fallback model) may succeed.
 # httpx.TransportError: the SDK sometimes surfaces raw timeouts / connection errors that
@@ -183,6 +200,10 @@ class LLMGateway:
         retry_backoff: bool = True,
         callbacks: Callable[[], list[BaseCallbackHandler]] = langchain_callbacks,
         key_pool: KeyPool | None = None,
+        key_ids: Sequence[str] | None = None,
+        usage_store: UsageStore | None = None,
+        breaker: ModelBreaker | None = None,
+        now: Callable[[], datetime] = lambda: datetime.now(UTC),
     ) -> None:
         for name in (default_model, *fallback_models):
             get_model(name)  # fail at startup on a typo, not on the first call
@@ -190,9 +211,19 @@ class LLMGateway:
         self._default_model = default_model
         self._fallbacks = [m for m in dict.fromkeys(fallback_models) if m != default_model]
         self._keys = key_pool or KeyPool(keys)
+        self._key_ids = list(key_ids) if key_ids else [f"key{i}" for i in range(self._keys.size)]
+        if len(self._key_ids) != self._keys.size:
+            raise ValueError("key_ids must name every key")
+        self._usage: UsageStore = usage_store or MemoryUsageStore()
+        self._breaker = breaker or ModelBreaker()
+        self._now = now
         self._retry_attempts = retry_attempts
         self._retry_backoff = retry_backoff
         self._callbacks = callbacks
+
+    def use_usage_store(self, store: UsageStore) -> None:
+        """Count requests in `store` from now on (bootstrap: Postgres once the engine exists)."""
+        self._usage = store
 
     @classmethod
     def from_settings(cls, settings: Settings) -> LLMGateway:
@@ -201,6 +232,7 @@ class LLMGateway:
             default_model=settings.text_model,
             fallback_models=settings.fallback_models,
             keys=len(settings.gemini_keys),
+            key_ids=[key_id(k) for k in settings.gemini_keys],
             retry_attempts=settings.llm_retry_attempts,
         )
 
@@ -229,9 +261,13 @@ class LLMGateway:
         }
 
         started = time.perf_counter()
-        attempt, last_error = None, None
-        for name in models:
-            keys = self._keys.available(name)
+        day = quota_day(self._now())
+        attempt, last_error, daily_out = None, None, False
+        # Models answering "overloaded" go last; keys: least used today first, none past its
+        # daily budget (so an exhausted key costs no request and no time).
+        for name in self._breaker.order(models):
+            keys, spent = await self._keys_for(name, day)
+            daily_out = daily_out or spent
             for key in keys:
                 config: RunnableConfig = {
                     "callbacks": self._callbacks(),
@@ -240,29 +276,51 @@ class LLMGateway:
                 }
                 chain = self._branch(name, key, prompt, opts, schema)
                 try:
-                    attempt = await chain.ainvoke(prompt.messages, config=config)
+                    attempt = await self._invoke(chain, prompt, config)
+                    await self._record(day, key, name, attempt)
                     break
                 except OutputTruncated:
+                    await self._record(day, key, name, None)  # it reached the model: it counts
                     raise  # another key or model would truncate the same way
                 except Exception as exc:
                     last_error = exc
                     problem = key_problem(exc)
                     if problem is not None:  # this key is broken or out of quota: next key
                         self._keys.bench(key, name, problem)
+                        if problem.daily:
+                            daily_out = True
+                            await self._exhausted(day, key, name, daily_limit_from(str(exc)))
                         log.warning(
                             "llm.key_benched", model=name, key=key, seconds=problem.seconds,
                             all_models=problem.all_models, error=type(exc).__name__,
                         )  # fmt: skip
                         continue
+                    if is_overloaded(exc):
+                        # Busy for every key: skip this model for a while, use the next one.
+                        self._breaker.trip(name)
+                        log.warning("llm.model_overloaded", model=name)
+                        break
                     if isinstance(exc, TRANSIENT_ERRORS):
                         break  # not the key's fault and retries are used up: next model
                     _raise_mapped(prompt, exc)
             if attempt is not None:
                 break
         if attempt is None:
+            # Everything is spent: tell the job runner when trying again can succeed.
+            retry_after = (
+                seconds_until_reset(self._now()) + RESET_MARGIN_S
+                if daily_out
+                else PER_MINUTE_RETRY_S
+            )
             if last_error is None:
-                raise QuotaExceeded(f"{prompt.ref}: every API key is benched for {models}")
-            _raise_mapped(prompt, last_error)
+                raise QuotaExceeded(
+                    f"{prompt.ref}: every API key is out of budget for {models}",
+                    retry_after_s=retry_after,
+                )
+            mapped = _mapped(prompt, last_error)
+            if isinstance(mapped, QuotaExceeded):
+                mapped.retry_after_s = retry_after
+            _raise_mapped(prompt, last_error, mapped)
         latency_ms = (time.perf_counter() - started) * 1000
 
         usage = attempt.raw.usage_metadata or {}
@@ -281,6 +339,59 @@ class LLMGateway:
             ),
         )
 
+    async def _invoke(
+        self, chain: Runnable[Any, _Attempt], prompt: RenderedPrompt, config: RunnableConfig
+    ) -> _Attempt:
+        """One key: a server error (5xx incl. 503 "overloaded") gets one more try here, not
+        the full retry budget: an overloaded model answers slowly, the next model is faster."""
+        for tries in range(1, SERVER_ERROR_TRIES + 1):
+            try:
+                return await chain.ainvoke(prompt.messages, config=config)
+            except ModelAPIError:
+                if tries == SERVER_ERROR_TRIES:
+                    raise
+                if self._retry_backoff:
+                    await asyncio.sleep(SERVER_ERROR_PAUSE_S)
+        raise AssertionError("unreachable")
+
+    async def _keys_for(self, model: str, day: date) -> tuple[list[int], bool]:
+        """Usable keys for `model`, least used today first, and whether any key was skipped
+        because its daily budget is spent. A failing store never blocks a call."""
+        keys = self._keys.available(model)
+        try:
+            used = await self._usage.usage(day, model)
+            limit = await self._usage.daily_limit(model)
+        except Exception:
+            log.warning("llm.usage_store_unavailable", exc_info=True)
+            return keys, False
+        usage = {k: used.get(self._key_ids[k], KeyUsage()) for k in keys}
+        spent = {
+            k
+            for k, u in usage.items()
+            if u.exhausted or (limit is not None and u.requests >= limit)
+        }
+        ready = sorted((k for k in keys if k not in spent), key=lambda k: usage[k].requests)
+        return ready, bool(spent)
+
+    async def _record(self, day: date, key: int, model: str, attempt: _Attempt | None) -> None:
+        usage = (attempt.raw.usage_metadata or {}) if attempt else {}
+        try:
+            await self._usage.record(
+                day,
+                self._key_ids[key],
+                model,
+                tokens_in=usage.get("input_tokens", 0),
+                tokens_out=usage.get("output_tokens", 0),
+            )
+        except Exception:
+            log.warning("llm.usage_store_unavailable", exc_info=True)
+
+    async def _exhausted(self, day: date, key: int, model: str, limit: int | None) -> None:
+        try:
+            await self._usage.mark_exhausted(day, self._key_ids[key], model, limit)
+        except Exception:
+            log.warning("llm.usage_store_unavailable", exc_info=True)
+
     def _branch(
         self,
         model: str,
@@ -298,11 +409,9 @@ class LLMGateway:
         llm.name = f"{model}:{prompt.ref}"  # the Langfuse generation's name; llm is per-call
         structured = llm.with_structured_output(schema, include_raw=True)
         unwrap = RunnableLambda(partial(_unwrap, model=model, schema=schema))
-        retry_on = (
-            TRANSIENT_ERRORS
-            if self._keys.size == 1
-            else tuple(e for e in TRANSIENT_ERRORS if e is not ModelRateLimitError)
-        )
+        # 5xx: one more try in _invoke. 429 with several keys: the next key, not a retry.
+        skip = {ModelAPIError} | ({ModelRateLimitError} if self._keys.size > 1 else set())
+        retry_on = tuple(e for e in TRANSIENT_ERRORS if e not in skip)
         return structured.pipe(unwrap).with_retry(
             retry_if_exception_type=retry_on,
             stop_after_attempt=self._retry_attempts,
@@ -342,8 +451,10 @@ def _mapped(prompt: RenderedPrompt, exc: BaseException) -> Exception:
     return LLMError(f"{prompt.ref}: {type(exc).__name__}: {exc}")
 
 
-def _raise_mapped(prompt: RenderedPrompt, exc: BaseException) -> NoReturn:
-    mapped = _mapped(prompt, exc)
+def _raise_mapped(
+    prompt: RenderedPrompt, exc: BaseException, mapped: BaseException | None = None
+) -> NoReturn:
+    mapped = mapped if mapped is not None else _mapped(prompt, exc)
     if mapped is exc:
         raise exc  # unchanged: `raise exc from exc` would make it its own cause (a cycle)
     raise mapped from exc

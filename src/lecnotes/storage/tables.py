@@ -10,7 +10,7 @@ Conventions:
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from enum import StrEnum
 from typing import Any
@@ -18,6 +18,7 @@ from typing import Any
 from sqlalchemy import (
     BigInteger,
     CheckConstraint,
+    Date,
     DateTime,
     ForeignKey,
     Index,
@@ -258,3 +259,22 @@ class UsageRow(Base):
     created_at: Mapped[datetime] = _created()
 
     __table_args__ = (CheckConstraint("kind IN ('video', 'qa')", name="kind"),)
+
+
+class ApiKeyUsageRow(Base):
+    """Requests per (API key, model, quota day): the gateway skips a key whose daily budget is
+    spent before calling it. `key_id` is a hash; keys themselves are never stored. Days are
+    Pacific dates, when Gemini's daily limits reset."""
+
+    __tablename__ = "api_key_usage"
+
+    key_id: Mapped[str] = mapped_column(primary_key=True)
+    model: Mapped[str] = mapped_column(primary_key=True)
+    day: Mapped[date] = mapped_column(Date, primary_key=True)
+    requests: Mapped[int] = mapped_column(server_default="0")
+    tokens_in: Mapped[int] = mapped_column(BigInteger, server_default="0")
+    tokens_out: Mapped[int] = mapped_column(BigInteger, server_default="0")
+    exhausted: Mapped[bool] = mapped_column(server_default="false")
+    daily_limit: Mapped[int | None]
+    """The per-day request limit a 429 reported for this model (learned, not configured)."""
+    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())

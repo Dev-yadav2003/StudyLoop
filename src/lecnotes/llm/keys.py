@@ -5,9 +5,12 @@ its quota exhausted — and the call moves straight on to the next key with the 
 quality doesn't drop because one key ran out. Server errors and timeouts are not the key's
 fault: they are retried on the same key, then the next model.
 
-This is failover, not throughput multiplication: requests are still paced by the per-model
-rate limiter shared by all keys. (Rotating free-tier keys to get around quotas would break
-Google's Gemini API terms.)
+Requests are paced by the per-model rate limiter shared by all keys. Daily budgets are
+tracked per (key, model) in `llm/quota.py`, so an exhausted key is skipped before calling.
+Gemini limits apply per project: keys of one project share one budget.
+
+A model that answers 503 "overloaded" is unavailable for every key, so it is not a key
+problem: `ModelBreaker` skips that model for a while instead of waiting on it.
 """
 
 from __future__ import annotations
@@ -23,6 +26,7 @@ from langchain_core.exceptions import (
 )
 
 PER_MINUTE_BENCH_S = 65.0
+OVERLOAD_BENCH_S = 120.0  # skip an overloaded model this long, then probe it again
 DAILY_BENCH_S = 3600.0  # daily quotas reset at midnight Pacific; recheck hourly
 BROKEN_KEY_BENCH_S = 24 * 3600.0
 
@@ -42,6 +46,8 @@ class KeyProblem:
     all_models: bool
     """True: the key itself is broken. False: only its quota for this model is used up —
     Gemini quotas are per key AND per model, so the key may still serve the fallback model."""
+    daily: bool = False
+    """The per-day budget is used up: the key is done with this model until the reset."""
 
 
 def key_problem(exc: BaseException) -> KeyProblem | None:
@@ -54,8 +60,39 @@ def key_problem(exc: BaseException) -> KeyProblem | None:
         return KeyProblem(BROKEN_KEY_BENCH_S, all_models=True)
     if isinstance(exc, ModelRateLimitError) or status == 429 or "RESOURCE_EXHAUSTED" in text:
         daily = "PerDay" in text or "per day" in text.lower()
-        return KeyProblem(DAILY_BENCH_S if daily else PER_MINUTE_BENCH_S, all_models=False)
+        return KeyProblem(
+            DAILY_BENCH_S if daily else PER_MINUTE_BENCH_S, all_models=False, daily=daily
+        )
     return None
+
+
+_OVERLOAD_MARKERS = ("503 ", "UNAVAILABLE", "overloaded", "high demand")
+
+
+def is_overloaded(exc: BaseException) -> bool:
+    """Gemini's 503: the model itself is busy for everyone, whichever key asks."""
+    status = getattr(exc, "status_code", None) or getattr(exc, "code", None)
+    return status == 503 or any(marker in str(exc) for marker in _OVERLOAD_MARKERS)
+
+
+class ModelBreaker:
+    """Models answering "overloaded": tried last until OVERLOAD_BENCH_S passes. After that the
+    next call probes the model again (and re-benches it if it is still busy)."""
+
+    def __init__(self, *, clock: Callable[[], float] = time.monotonic) -> None:
+        self._until: dict[str, float] = {}
+        self._clock = clock
+
+    def busy(self, model: str) -> bool:
+        return self._until.get(model, 0.0) > self._clock()
+
+    def trip(self, model: str, seconds: float = OVERLOAD_BENCH_S) -> None:
+        self._until[model] = self._clock() + seconds
+
+    def order(self, models: list[str]) -> list[str]:
+        """Healthy models first, in preference order; busy ones last (still tried if
+        nothing else is left)."""
+        return [m for m in models if not self.busy(m)] + [m for m in models if self.busy(m)]
 
 
 class KeyPool:

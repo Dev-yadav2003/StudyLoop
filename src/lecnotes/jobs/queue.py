@@ -164,8 +164,9 @@ class JobQueue:
         user_message: str,
         retryable: bool,
         retry_in_s: float = 60,
+        count_attempt: bool = True,
     ) -> Job:
-        if retryable and lease.job.attempts < self.max_attempts:
+        if retryable and (not count_attempt or lease.job.attempts < self.max_attempts):
             stmt = (
                 update(JobRow)
                 .where(JobRow.id == lease.job.id, JobRow.lease_owner == lease.owner)
@@ -177,6 +178,8 @@ class JobQueue:
                     leased_until=None,
                     run_after=func.now() + timedelta(seconds=retry_in_s),
                     updated_at=func.now(),
+                    # Leasing counted this run; give it back when it doesn't count.
+                    attempts=JobRow.attempts - (0 if count_attempt else 1),
                 )
             )
             async with self._engine.begin() as conn:

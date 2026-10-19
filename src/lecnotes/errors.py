@@ -30,8 +30,11 @@ class LLMError(LecNotesError):
 class QuotaExceeded(LLMError):
     user_message = "The free AI quota is used up for now. Your job will resume when it resets."
 
-    def __init__(self, message: str) -> None:
+    def __init__(self, message: str, *, retry_after_s: float | None = None) -> None:
         super().__init__(message, retryable=True)
+        self.retry_after_s = retry_after_s
+        """When trying again can succeed: the daily reset, or a minute for per-minute limits.
+        None = unknown (the job runner uses its default)."""
 
 
 class StructuredOutputError(LLMError):
