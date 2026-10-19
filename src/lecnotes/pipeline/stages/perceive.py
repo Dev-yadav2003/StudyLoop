@@ -10,7 +10,8 @@ from lecnotes.ports.perception import Perceiver
 
 class PerceiveStage(Stage[VideoMeta, PerceptionRun]):
     """The only stage that looks at the video. Its output is cached until the stage version or
-    anything in the perceiver's fingerprint (prompt version, model, fps, resolution) changes:
+    anything in the perceiver's fingerprint (prompt version, model, fps, resolution, clip
+    length) changes:
     re-perceiving costs real quota (8 h/day of YouTube video on the free tier)."""
 
     name = "perceive"

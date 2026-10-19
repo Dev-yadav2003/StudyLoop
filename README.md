@@ -50,7 +50,7 @@ flowchart LR
 | Stage | AI? | What it does |
 |---|---|---|
 | **resolve** | – | Title, length and availability from the YouTube Data API. The video is never downloaded. |
-| **perceive** | Gemini | Gemini reads the YouTube URL and returns timestamped speech plus every distinct screen ("board state") with its exact text. |
+| **perceive** | Gemini | Gemini reads the YouTube URL and returns timestamped speech plus every distinct screen ("board state") with its exact text. Videos over 10 minutes are read in overlapping clips, so a long lecture never exceeds the model's output limit. |
 | **validate** | – | Fixes the model's timing slips: clips, sorts, de-duplicates, merges repeated slides. |
 | **align** | – | Links speech to slides by time and by matching words (catches "a numerate" → `enumerate`). |
 | **chunk** | – | Splits the lecture at slide changes into 2–5 minute parts (dynamic programming). |
