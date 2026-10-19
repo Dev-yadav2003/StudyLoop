@@ -160,6 +160,32 @@ uv run lecnotes run <url> --rerun-from extract      # recompute from one stage; 
 uv run lecnotes run <url> --no-db --no-trace        # in-memory cache, no Langfuse
 ```
 
+## Deploy
+
+API on **Render** (free plan), web app on **Vercel** (Hobby). Deploy the API first: the web
+app needs its URL, and the API needs the web app's URL for CORS.
+
+**1. API → Render.** New → **Blueprint** → pick this repo. [`render.yaml`](render.yaml)
+creates the service; fill in the secrets it asks for (same values as your `.env`). Leave
+`CORS_ORIGINS` as `["http://localhost:3000"]` for now. Migrations run on every start. Check
+`https://<service>.onrender.com/readyz` answers `"status": "ok"`.
+
+**2. Web → Vercel.** Add New → Project → import this repo, set **Root Directory** to
+`apps/web`, and add the three variables from `apps/web/.env.example` with
+`NEXT_PUBLIC_API_URL` set to the Render URL. Deploy.
+
+**3. Connect them.**
+- Render → Environment: `CORS_ORIGINS=["https://<project>.vercel.app"]` (saving redeploys).
+- Supabase → Authentication → URL Configuration: **Site URL** = the Vercel URL, and add
+  `https://<project>.vercel.app/**` to **Redirect URLs**.
+
+**Keeping the API awake.** Render's free plan sleeps after 15 minutes without traffic and
+takes about a minute to wake — and a sleeping API also stops processing queued jobs. Two
+things ping `/healthz` every 10 minutes: the web app (while it's open in a browser) and the
+[`keep-alive`](.github/workflows/keep-alive.yml) workflow (always, once you set the repository
+variable `API_URL` to the Render URL). An always-on service uses ~744 of the free plan's 750
+instance-hours a month, so this works for one service only.
+
 ## Evaluation
 
 ```bash
@@ -223,8 +249,7 @@ docs/                  local testing guide, architecture decision records
 
 - One video per link — playlists aren't supported ([ADR 0007](docs/adr/0007-single-video-scope.md)).
 - On Gemini's free tier, requests are paced (~10/min), so a lecture takes a few minutes.
-- Next: a hand-made golden set to measure completeness (key-point recall), and hosting
-  (API on Render, web on Vercel).
+- Next: a hand-made golden set to measure completeness (key-point recall).
 
 ## Contributing
 

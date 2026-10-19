@@ -1,0 +1,23 @@
+name: keep-alive
+
+# Pings the API so Render's free plan doesn't put it to sleep (it sleeps after 15 minutes
+# without traffic). The web app pings too, but only while someone has it open.
+# Set the repository variable API_URL (Settings → Secrets and variables → Actions →
+# Variables), e.g. https://studyloop-api.onrender.com. Unset = this workflow does nothing.
+# GitHub may run scheduled jobs a few minutes late, hence 10 minutes rather than 14.
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  ping:
+    if: vars.API_URL != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Ping /healthz
+        run: curl --fail --silent --show-error --retry 3 --retry-delay 20 --max-time 90 "${{ vars.API_URL }}/healthz"

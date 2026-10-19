@@ -1,0 +1,35 @@
+# Render Blueprint for the API (+ background worker, same process).
+#   Render → New → Blueprint → pick this repo. Fill in the `sync: false` values when asked.
+# Python version comes from .python-version. Migrations run on every start (idempotent):
+# Render's free plan has no pre-deploy command.
+services:
+  - type: web
+    name: studyloop-api
+    runtime: python
+    plan: free
+    # Pick the region closest to your Supabase project (oregon, ohio, virginia, frankfurt,
+    # singapore). Changing it later means recreating the service.
+    region: singapore
+    buildCommand: pip install -r requirements.txt
+    startCommand: alembic upgrade head && uvicorn apps.api.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /healthz
+    envVars:
+      - key: ENV
+        value: prod
+      # JSON list of web origins, e.g. ["https://studyloop.vercel.app"]
+      - key: CORS_ORIGINS
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: YOUTUBE_API_KEY
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: LANGFUSE_PUBLIC_KEY
+        sync: false
+      - key: LANGFUSE_SECRET_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: OWNER_EMAILS
+        sync: false
