@@ -10,7 +10,7 @@ from langchain_core.messages import AIMessage, HumanMessage
 from pydantic import SecretStr
 
 from lecnotes.adapters.llm.fake import FakeLLM
-from lecnotes.adapters.perception.gemini_url import MAX_OUTPUT_TOKENS, GeminiUrlPerceiver
+from lecnotes.adapters.perception.gemini_url import GeminiUrlPerceiver
 from lecnotes.adapters.perception.schema import PerceiveOutput
 from lecnotes.config import Settings
 from lecnotes.domain import VideoRef
@@ -84,8 +84,9 @@ async def test_video_part_options_and_duration_sent_to_model() -> None:
     await perceiver(fake).perceive(VIDEO, duration_s=754)
 
     [call] = fake.calls
+    # Output cap sized to the video: 4,000 answer tokens per minute of 12:34 (no thinking cap).
     assert call.options == ModelOptions(
-        media_resolution="low", max_output_tokens=MAX_OUTPUT_TOKENS, timeout_s=600
+        media_resolution="low", max_output_tokens=50_266, timeout_s=600
     )
     user = call.messages[-1]
     assert isinstance(user, HumanMessage)
@@ -189,7 +190,7 @@ async def test_wire_request_carries_video_url_fps_and_resolution(
     assert video["videoMetadata"]["fps"] == 0.5
     config = body["generationConfig"]
     assert config["mediaResolution"] == "MEDIA_RESOLUTION_LOW"
-    assert config["maxOutputTokens"] == MAX_OUTPUT_TOKENS
+    assert config["maxOutputTokens"] == 50_266  # sized to the 12:34 video
     assert config["responseMimeType"] == "application/json"
     assert list(config["responseJsonSchema"]["properties"]) == ["board_states", "segments"]
     assert "VERBATIM" in json.dumps(body["systemInstruction"])

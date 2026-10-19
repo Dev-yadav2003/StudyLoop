@@ -68,6 +68,8 @@ class ModelOptions:
     thinking_level: Literal["minimal", "low", "medium", "high"] | None = None
     """Gemini 3+ thinking control; replaces thinking_budget there."""
     timeout_s: float | None = None
+    temperature: float | None = None
+    """Overrides the prompt's temperature for this call (e.g. to break a repetition loop)."""
 
 
 ModelFactory = Callable[[str, float, ModelOptions, int], BaseChatModel]
@@ -289,7 +291,10 @@ class LLMGateway:
     ) -> Runnable[Any, _Attempt]:
         """model → structured output (with raw message) → validate, retried as one unit.
         With several keys, a 429 isn't retried on the same key: the next key is used instead."""
-        llm = self._factory(model, prompt.spec.temperature, options, key)
+        temperature = (
+            prompt.spec.temperature if options.temperature is None else options.temperature
+        )
+        llm = self._factory(model, temperature, options, key)
         llm.name = f"{model}:{prompt.ref}"  # the Langfuse generation's name; llm is per-call
         structured = llm.with_structured_output(schema, include_raw=True)
         unwrap = RunnableLambda(partial(_unwrap, model=model, schema=schema))
