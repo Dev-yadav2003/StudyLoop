@@ -67,5 +67,5 @@ typing-extensions==4.16.0
     #   anyio
     #   pyright
     #   pytest-asyncio
-virtualenv==21.14.8
+virtualenv==21.14.13
     # via pre-commit
