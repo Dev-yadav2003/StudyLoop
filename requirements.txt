@@ -101,7 +101,7 @@ markupsafe==3.0.4
     # via
     #   jinja2
     #   mako
-opentelemetry-api==1.45.1
+opentelemetry-api==1.45.2
     # via
     #   fastapi
     #   langfuse
